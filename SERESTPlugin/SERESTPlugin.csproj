@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+
+    <Version>1.0.0</Version>
+    <Authors>Alexander "Ananace" Olofsson</Authors>
+    <Company>Introvert Software</Company>
+    <Product>SERESTPlugin</Product>
+    <PackageId>SERESTPlugin</PackageId>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Description>REST API Plugin for Space Engineers</Description>
+    <Copyright>Copyright © Alexander "Ananace" Olofsson 2022</Copyright>
+    <RepositoryUrl>https://github.com/ananace/dotnet-serestplugin</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--<Reference Include="HarmonyLib">
+      <HintPath>..\0Harmony.dll</HintPath>
+    </Reference>-->
+
+    <Reference Include="Sandbox.Common">    
+      <HintPath>..\Bin64\Sandbox.Common.dll</HintPath>    
+    </Reference>    
+    <Reference Include="Sandbox.Game">    
+      <HintPath>..\Bin64\Sandbox.Game.dll</HintPath>    
+    </Reference>    
+    <Reference Include="Sandbox.Graphics">    
+      <HintPath>..\Bin64\Sandbox.Graphics.dll</HintPath>    
+    </Reference>    
+    <Reference Include="SpaceEngineers.ObjectBuilders">    
+      <HintPath>..\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>    
+    </Reference>    
+    <Reference Include="VRage">    
+      <HintPath>..\Bin64\VRage.dll</HintPath>    
+    </Reference>    
+    <Reference Include="VRage.Game">    
+      <HintPath>..\Bin64\VRage.Game.dll</HintPath>    
+    </Reference>    
+    <Reference Include="VRage.Library">    
+      <HintPath>..\Bin64\VRage.Library.dll</HintPath>    
+    </Reference>    
+    <Reference Include="VRage.Math">    
+      <HintPath>..\Bin64\VRage.Math.dll</HintPath>    
+    </Reference>    
+  </ItemGroup>    
+
+</Project>
