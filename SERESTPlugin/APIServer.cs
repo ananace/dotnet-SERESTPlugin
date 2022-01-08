@@ -11,7 +11,6 @@ namespace SERESTPlugin
 public class APIServer : IDisposable
 {
     HttpListener _listen;
-    IAsyncResult _waiting;
 
     static readonly IAPI[] _APIs = {
         new APIs.Core(),
@@ -51,7 +50,7 @@ public class APIServer : IDisposable
             api.Register(this);
         _listen.Start();
 
-        _waiting = _listen.BeginGetContext(OnContextReceived, _listen);
+        _listen.BeginGetContext(OnContextReceived, _listen);
 
         Logger.Info($"APIServer: Now listening on {string.Join(", ",_listen.Prefixes.ToArray())}, with {Callbacks.Count} callbacks registered.");
     }
@@ -101,7 +100,7 @@ public class APIServer : IDisposable
 
         HandleRequest(ctx);
 
-        _waiting = _listen.BeginGetContext(OnContextReceived, _listen);
+        _listen.BeginGetContext(OnContextReceived, _listen);
     }
 
     void HandleRequest(HttpListenerContext context)
