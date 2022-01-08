@@ -11,7 +11,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Description>REST API Plugin for Space Engineers</Description>
     <Copyright>Copyright © Alexander "Ananace" Olofsson 2022</Copyright>
-    <RepositoryUrl>https://github.com/ananace/dotnet-serestplugin</RepositoryUrl>
+    <RepositoryUrl>https://github.com/ananace/dotnet-SERESTPlugin</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
