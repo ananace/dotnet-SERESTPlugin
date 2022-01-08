@@ -15,11 +15,6 @@ namespace SERESTPlugin.APIs
                 var status = new PlayerStatus(Sandbox.Game.World.MySession.Static.LocalCharacter);
                 ev.Context.Response.CloseJSON(status);
             });
-            api.RegisterRequest("GET", "grid", (s, ev) => {
-                ev.Handled = true;
-                var info = new GridInformation();
-                ev.Context.Response.CloseJSON(info);
-            });
 
             var other = api.RegisterSubAPI("(?<name>[^/]+)");
             other.RegisterRequest("GET", "friendly", (s, ev) => {
