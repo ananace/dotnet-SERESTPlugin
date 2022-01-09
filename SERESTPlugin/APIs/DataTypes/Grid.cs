@@ -24,7 +24,7 @@ internal class GridInformation
     public GridInformation() {}
     public GridInformation(Sandbox.Game.Entities.MyCubeGrid grid)
     {
-        Name = grid.GetFriendlyName();
+        Name = (grid as VRage.Game.ModAPI.IMyCubeGrid).CustomName;
         ID = grid.EntityId;
         Size = grid.GridSizeEnum.ToString();
 
@@ -45,13 +45,22 @@ internal class BlockInformation
     public string Name { get; set; }
     [DataMember(Name = "id")]
     public long ID { get; set; }
+    [DataMember(Name = "mass")]
+    public float Mass { get; set; }
+    [DataMember(Name = "functional")]
+    public bool Functional { get; set; }
+    [DataMember(Name = "working")]
+    public bool Working { get; set; }
 
     public BlockInformation() {}
-    public BlockInformation(Sandbox.Game.Entities.MyCubeBlock block)
+    public BlockInformation(Sandbox.ModAPI.IMyTerminalBlock block)
     {
         Type = block.DefinitionDisplayNameText;
-        Name = (block as Sandbox.ModAPI.IMyTerminalBlock).CustomName;
+        Name = block.CustomName;
         ID = block.EntityId;
+        Mass = block.Mass;
+        Functional = block.IsFunctional;
+        Working = block.IsWorking;
     }
 }
 
@@ -84,6 +93,48 @@ internal class LightBlock
         BlinkIntervalSeconds = block.BlinkIntervalSeconds;
         BlinkLength = block.BlinkLength;
         BlinkOffset = block.BlinkOffset;
+    }
+}
+
+[DataContract]
+internal class ThrustBlock
+{
+    [DataMember(Name = "direction")]
+    public string Direction { get; set; }
+
+    [DataMember(Name = "current_thrust")]
+    public float? Thrust { get; set; }
+    [DataMember(Name = "max_thrust")]
+    public float? MaxThrust { get; set; }
+    [DataMember(Name = "max_effective_thrust")]
+    public float? MaxEffectiveThrust { get; set; }
+
+    [DataMember(Name = "override")]
+    public float? Override { get; set; }
+    [DataMember(Name = "override_perc")]
+    public float? OverridePercentage { get; set; }
+
+    public ThrustBlock() {}
+    public ThrustBlock(Sandbox.ModAPI.IMyThrust block)
+    {
+        if (block.GridThrustDirection == VRageMath.Vector3I.Forward)
+            Direction = "forward";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Right)
+            Direction = "right";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Backward)
+            Direction = "backward";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Left)
+            Direction = "left";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Up)
+            Direction = "up";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Down)
+            Direction = "down";
+
+        Override = block.ThrustOverride;
+        OverridePercentage = block.ThrustOverridePercentage;
+        Thrust = block.CurrentThrust;
+        MaxThrust = block.MaxThrust;
+        MaxEffectiveThrust = block.MaxEffectiveThrust;
     }
 }
 

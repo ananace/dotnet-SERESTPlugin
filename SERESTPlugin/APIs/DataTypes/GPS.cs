@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.Serialization;
 
 namespace SERESTPlugin.APIs.DataTypes
@@ -13,9 +14,22 @@ class GPS
     [DataMember(Name = "coordinates", IsRequired = true)]
     public Coordinate Coordinates { get; set; }
     [DataMember(Name = "visible")]
-    public bool Visible { get; set; } = true;
+    public bool? Visible { get; set; } = true;
     [DataMember(Name = "color", EmitDefaultValue = false)]
     public Color Color { get; set; }
+    [DataMember(Name = "lifespan")]
+    public TimeSpan? Lifespan { get; set; }
+
+    public GPS() {}
+    public GPS(VRage.Game.ModAPI.IMyGps Gps)
+    {
+        Name = Gps.Name;
+        Description = Gps.Description;
+        Coordinates = new Coordinate(Gps.Coords);
+        Visible = Gps.ShowOnHud;
+        Color = new Color(Gps.GPSColor);
+        Lifespan = Gps.DiscardAt;
+    }
 }
 
 [DataContract]

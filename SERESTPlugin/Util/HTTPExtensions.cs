@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -7,17 +8,80 @@ namespace SERESTPlugin.Util
 
 static class HTTPExtensions
 {
+    public static bool TryConvert<T>(this string data, out T result) where T : IConvertible
+    {
+        result = default;
+
+        if (string.IsNullOrEmpty(data))
+            return false;
+
+        try
+        {
+            result = (T)Convert.ChangeType(data, typeof(T));
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
     public static T ReadJSON<T>(this System.Net.HttpListenerRequest req)
     {
-        var serializer = new DataContractJsonSerializer(typeof(T));
+        var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
         return (T)serializer.ReadObject(req.InputStream);
+    }
+
+    public static bool TryReadJSON<T>(this System.Net.HttpListenerRequest req, out T result)
+    {
+        result = default;
+        if (!req.HasEntityBody)
+            return false;
+
+        try
+        {
+            result = ReadJSON<T>(req);
+            return true;
+        }
+        catch (SerializationException)
+        {
+            return false;
+        }
+    }
+
+    public static T ReadObject<T>(this System.Net.HttpListenerRequest req) where T : IConvertible
+    {
+        if (TryReadObject(req, out T result))
+            return result;
+        return default;
+    }
+
+    public static bool TryReadObject<T>(this System.Net.HttpListenerRequest req, out T result) where T : IConvertible
+    {
+        result = default;
+
+        if (!req.HasEntityBody)
+            return false;
+
+        try
+        {
+            using (var reader = new StreamReader(req.InputStream))
+            {
+                var data = reader.ReadToEnd();
+                return data.TryConvert(out result);
+            }
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     public static void CloseJSON<T>(this System.Net.HttpListenerResponse resp, T json)
     {
         resp.ContentType = "application/json";
 
-        var serializer = new DataContractJsonSerializer(typeof(T));
+        var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
         using (var stream = new MemoryStream())
         {
             serializer.WriteObject(stream, json);

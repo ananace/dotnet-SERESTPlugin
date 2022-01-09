@@ -11,6 +11,7 @@ namespace SERESTPlugin
 public class APIServer : IDisposable
 {
     HttpListener _listen;
+    Queue<HttpListenerContext> _waiting = new Queue<HttpListenerContext>();
 
     static readonly IAPI[] _APIs = {
         new APIs.Core(),
@@ -50,6 +51,7 @@ public class APIServer : IDisposable
             api.Register(this);
         _listen.Start();
 
+        _waiting.Clear();
         _listen.BeginGetContext(OnContextReceived, _listen);
 
         Logger.Info($"APIServer: Now listening on {string.Join(", ",_listen.Prefixes.ToArray())}, with {Callbacks.Count} callbacks registered.");
@@ -57,8 +59,30 @@ public class APIServer : IDisposable
 
     public void Stop()
     {
+        _waiting.Clear();
+
         _listen?.Stop();
         _listen = null;
+    }
+
+    public void Tick()
+    {
+        if (!IsListening)
+            return;
+
+        lock(_waiting)
+        {
+            var start = DateTime.Now;
+            do
+            {
+                if (_waiting.Count == 0)
+                    break;
+
+                var ctx = _waiting.Dequeue();
+                HandleRequest(ctx);
+            }
+            while (DateTime.Now - start < TimeSpan.FromMilliseconds(5));
+        }
     }
 
     public APIRegister RegisterAPI(string path)
@@ -72,7 +96,7 @@ public class APIServer : IDisposable
         if (string.IsNullOrEmpty(path))
             fullPath = BasePath.TrimEnd('/');
 
-        Logger.Debug($"APIServer: Adding handler for {method} {fullPath}");
+        //Logger.Debug($"APIServer: Adding handler for {method} {fullPath}");
 
         // if (!_listen.Prefixes.Contains(fullPath))
         //     _listen.Prefixes.Add(fullPath);
@@ -86,19 +110,10 @@ public class APIServer : IDisposable
 
     void OnContextReceived(IAsyncResult result)
     {
-        if (!IsListening)
-        {
-            Logger.Debug("APIServer: Received context when not listening, closing");
-
-            var context = _listen?.EndGetContext(result);
-            context?.Response?.CloseHttpCode(HttpStatusCode.ServiceUnavailable);
-
-            return;
-        }
-
         var ctx = _listen.EndGetContext(result);
 
-        HandleRequest(ctx);
+        lock(_waiting)
+            _waiting.Enqueue(ctx);
 
         _listen.BeginGetContext(OnContextReceived, _listen);
     }
@@ -129,10 +144,7 @@ public class APIServer : IDisposable
                     action.Invoke(this, eventArgs);
 
                     if (eventArgs.Handled)
-                    {
-                        Logger.Debug($"APIServer: Handled by {action.Target}");
                         break;
-                    }
                 }
 
                 if (eventArgs.Handled)
@@ -140,7 +152,7 @@ public class APIServer : IDisposable
             }
 
             if (!eventArgs.Handled)
-                context.Response.CloseHttpCode(HttpStatusCode.NotFound, "No endpoint handled the request");
+                context.Response.CloseHttpCode(HttpStatusCode.NotFound, "No endpoint chose to handle the request");
         }
         catch (Exception ex)
         {
@@ -156,8 +168,6 @@ public class APIServer : IDisposable
             var rex = new Regex($"^{registered}$");
             var match = rex.Match(path);
 
-            Logger.Debug($"{path} matches {rex}? {match.Success}");
-
             if (!match.Success)
                 return false;
 
@@ -166,8 +176,6 @@ public class APIServer : IDisposable
 
             return true;
         }
-
-        Logger.Debug($"{path} == {registered}? {path == registered}");
 
         return path == registered;
     }
