@@ -5,7 +5,7 @@ namespace SERESTPlugin.APIs.DataTypes
 {
 
 [DataContract]
-class GPS
+public class GPS
 {
     [DataMember(Name = "name", IsRequired = true)]
     public string Name { get; set; }
@@ -15,9 +15,9 @@ class GPS
     public Coordinate Coordinates { get; set; }
     [DataMember(Name = "visible")]
     public bool? Visible { get; set; } = true;
-    [DataMember(Name = "color", EmitDefaultValue = false)]
+    [DataMember(Name = "color")]
     public Color Color { get; set; }
-    [DataMember(Name = "lifespan")]
+    [DataMember(Name = "lifespan", EmitDefaultValue = false)]
     public TimeSpan? Lifespan { get; set; }
 
     public GPS() {}
@@ -33,7 +33,7 @@ class GPS
 }
 
 [DataContract]
-class GPSList
+public class GPSList
 {
     [DataMember(Name = "gpses")]
     public GPS[] GPSes { get; set; }

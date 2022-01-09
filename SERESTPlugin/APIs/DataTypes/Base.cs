@@ -4,7 +4,7 @@ namespace SERESTPlugin.APIs.DataTypes
 {
 
 [DataContract]
-class Coordinate
+public class Coordinate
 {
     [DataMember(Name = "x")]
     public double X { get; set; }
@@ -34,7 +34,7 @@ class Coordinate
 }
 
 [DataContract]
-internal class Color
+public class Color
 {
     [DataMember(Name = "r")]
     public byte R { get; set; }
@@ -66,13 +66,5 @@ internal class Color
         return new VRageMath.Color(R, G, B, A ?? 255);
     }
 }
-
-[DataContract]
-internal class SimpleResult
-{
-    [DataMember(Name = "data")]
-    public object Result { get; set; }
-}
-
 
 }

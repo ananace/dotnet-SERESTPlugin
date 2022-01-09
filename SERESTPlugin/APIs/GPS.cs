@@ -1,104 +1,75 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using SERESTPlugin.Attributes;
 using SERESTPlugin.Util;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SERESTPlugin.APIs
 {
 
-public class GPS : IAPI
+[API("/r0/gps", OnDedicated = false)]
+public class R0LocalGPSAPI : BaseAPI
 {
-    public void Register(APIServer server)
+    [APIEndpoint("GET", "/")]
+    public DataTypes.GPSList GetList()
     {
-        var api = server.RegisterAPI("gps");
+        var list = new List<VRage.Game.ModAPI.IMyGps>();
+        Sandbox.Game.World.MySession.Static.Gpss.GetGpsList(Sandbox.Game.World.MySession.Static.LocalPlayerId, list);
 
-        api.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-            var list = new List<VRage.Game.ModAPI.IMyGps>();
-            Sandbox.Game.World.MySession.Static.Gpss.GetGpsList(Sandbox.Game.World.MySession.Static.LocalPlayerId, list);
+        return new DataTypes.GPSList { GPSes = list.Select(g => new DataTypes.GPS(g)).ToArray() };
+    }
 
-            ev.Context.Response.CloseJSON(new DataTypes.GPSList {
-                GPSes = list.Select(g => new DataTypes.GPS(g)).ToArray()
-            });
-        });
-        api.RegisterRequest("POST", (s, ev) => {
-            ev.Handled = true;
-            if (!ev.Context.Request.HasEntityBody)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide GPS data");
-                return;
-            }
-            if (!ev.Context.Request.TryReadJSON(out DataTypes.GPS data))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Invalid GPS data provided");
-                return;
-            }
-            var modapiGpss = Sandbox.Game.World.MySession.Static.Gpss as VRage.Game.ModAPI.IMyGpsCollection;
+    [APIEndpoint("POST", "/")]
+    public void CreateGPS(DataTypes.GPS data)
+    {
+        var modapiGpss = Sandbox.Game.World.MySession.Static.Gpss as VRage.Game.ModAPI.IMyGpsCollection;
 
-            var gps = modapiGpss.Create(data.Name, data.Description, data.Coordinates.ToVector3D(), data.Visible ?? true);
-            gps.GPSColor = data.Color?.ToColor() ?? VRageMath.Color.AliceBlue;
+        var gps = modapiGpss.Create(data.Name, data.Description, data.Coordinates.ToVector3D(), data.Visible ?? true);
+        gps.GPSColor = data.Color?.ToColor() ?? VRageMath.Color.AliceBlue;
 
-            modapiGpss.AddGps(Sandbox.Game.World.MySession.Static.LocalPlayerId, gps);
+        modapiGpss.AddGps(Sandbox.Game.World.MySession.Static.LocalPlayerId, gps);
+    }
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Created);
-        });
-
-        var specific = api.RegisterSubAPI("(?<name>[^/]+)");
-        specific.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-
-            var gps = Sandbox.Game.World.MySession.Static.Gpss.GetGpsByName(Sandbox.Game.World.MySession.Static.LocalPlayerId, ev.Components["name"]);
-
-            ev.Context.Response.CloseJSON(new DataTypes.GPS(gps));
-        });
-        specific.RegisterRequest("POST", (s, ev) => {
-            ev.Handled = true;
-            if (!ev.Context.Request.HasEntityBody)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide GPS data");
-                return;
-            }
-            if (!ev.Context.Request.TryReadJSON(out DataTypes.GPS data))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Invalid GPS update data");
-                return;
-            }
-
-            var gps = Sandbox.Game.World.MySession.Static.Gpss.GetGpsByName(Sandbox.Game.World.MySession.Static.LocalPlayerId, ev.Components["name"]);
+    [API("/gps/(?<name>[^/]+)", OnDedicated = false, Needs = new string[] { "gps" })]
+    public class SpecificLocalGPSAPI : BaseAPI
+    {
+        [APIData("gps")]
+        public VRage.Game.ModAPI.IMyGps FindGPS()
+        {
+            var gps = Sandbox.Game.World.MySession.Static.Gpss.GetGpsByName(Sandbox.Game.World.MySession.Static.LocalPlayerId, EventArgs.Components["name"]);
             if (gps == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Specified GPS doesn't exist");
-                return;
-            }
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "Specified GPS doesn't exist");
+            return gps;
+        }
+        public VRage.Game.ModAPI.IMyGps GPS { get { return Data["gps"] as VRage.Game.ModAPI.IMyGps; } }
 
+        [APIEndpoint("GET", "/")]
+        public DataTypes.GPS GetGPS()
+        {
+            return new DataTypes.GPS(GPS);
+        }
+
+        [APIEndpoint("POST", "/")]
+        public void UpdateGPS(DataTypes.GPS data)
+        {
             if (data.Color != null)
-                gps.GPSColor = data.Color.ToColor();
+                GPS.GPSColor = data.Color.ToColor();
             if (data.Coordinates != null)
-                gps.Coords = data.Coordinates.ToVector3D();
+                GPS.Coords = data.Coordinates.ToVector3D();
             if (data.Description != null)
-                gps.Description = data.Description;
+                GPS.Description = data.Description;
             if (data.Name != null)
-                gps.Name = data.Name;
+                GPS.Name = data.Name;
             if (data.Visible.HasValue)
-                gps.ShowOnHud = data.Visible.Value;
+                GPS.ShowOnHud = data.Visible.Value;
             if (data.Lifespan.HasValue)
-                gps.DiscardAt = data.Lifespan.Value;
+                GPS.DiscardAt = data.Lifespan.Value;
+        }
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        specific.RegisterRequest("DELETE", (s, ev) => {
-            ev.Handled = true;
-            var id = Sandbox.Game.World.MySession.Static.LocalPlayerId;
-            var gps = Sandbox.Game.World.MySession.Static.Gpss.GetGpsByName(id, ev.Components["name"]);
-
-            if (gps != null)
-            {
-                Sandbox.Game.World.MySession.Static.Gpss.SendDelete(id, gps.Hash);
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NoContent);
-            }
-            else
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Specified GPS doesn't exist");
-        });
+        [APIEndpoint("DELETE", "/")]
+        public void DeleteGPS()
+        {
+            Sandbox.Game.World.MySession.Static.Gpss.SendDelete(Sandbox.Game.World.MySession.Static.LocalPlayerId, GPS.Hash);
+        }
     }
 }
 

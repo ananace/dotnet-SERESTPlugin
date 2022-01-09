@@ -1,30 +1,34 @@
+using SERESTPlugin.Attributes;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using SERESTPlugin.Util;
 
 namespace SERESTPlugin.APIs
 {
 
-public class Core : IAPI
+[API("/")]
+public class CoreAPI : BaseAPI
 {
     [DataContract]
-    internal class APIInformation
+    public class APIInformation
     {
         [DataMember(Name = "version")]
         public string Version { get; set; }
-        [DataMember(Name = "endpoints")]
-        public string[] Endpoints { get; set; }
+        [DataMember(Name = "apis")]
+        public IEnumerable<string> APIs { get; set; }
+        [DataMember(Name = "manual_apis")]
+        public IEnumerable<string> ManualAPIs { get; set; }
     }
 
-    public void Register(APIServer server)
+    [APIEndpoint("GET", "/version")]
+    public APIInformation GetInfo()
     {
-        server.RegisterHandler("GET", "", (s, ev) => {
-            ev.Handled = true;
-            
-            var handled = server.Callbacks.Keys.Select(k => $"{k.Method} {k.Path}").ToArray();
-            ev.Context.Response.CloseJSON(new APIInformation { Version = Assembly.GetAssembly(GetType()).ImageRuntimeVersion, Endpoints = handled });
-        });
+        return new APIInformation {
+            Version = Assembly.GetAssembly(GetType()).ImageRuntimeVersion,
+            APIs = Assembly.GetExecutingAssembly().GetTypes().Where(t => typeof(BaseAPI).IsAssignableFrom(t) && t.HasAttribute<APIAttribute>()).Select(a => a.GetCustomAttribute<APIAttribute>().Path),
+            ManualAPIs = APIServer.ManualAPIs.Select(api => api.GetType().ToString())
+        };
     }
 }
 

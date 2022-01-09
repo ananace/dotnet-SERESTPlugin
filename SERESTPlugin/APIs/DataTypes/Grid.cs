@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 namespace SERESTPlugin.APIs.DataTypes
 {
 
 [DataContract]
-internal class GridInformation
+public class GridInformation
 {
     [DataMember(Name = "name")]
     public string Name { get; set; }
@@ -37,8 +38,60 @@ internal class GridInformation
 }
 
 [DataContract]
-internal class BlockInformation
+public class BlockInformation
 {
+    static readonly IReadOnlyDictionary<string, System.Type> InterfaceMapping = new Dictionary<string, System.Type> {
+        { "assembler", typeof(Sandbox.ModAPI.IMyAssembler) },
+        { "attachable_top", typeof(Sandbox.ModAPI.IMyAttachableTopBlock) },
+        { "battery", typeof(Sandbox.ModAPI.IMyBatteryBlock) },
+        { "beacon", typeof(Sandbox.ModAPI.IMyBeacon) },
+        { "camera", typeof(Sandbox.ModAPI.IMyCameraBlock) },
+        { "cargo", typeof(Sandbox.ModAPI.IMyCargoContainer) },
+        { "cockpit", typeof(Sandbox.ModAPI.IMyCockpit) },
+        { "collector", typeof(Sandbox.ModAPI.IMyCollector) },
+        { "connector", typeof(Sandbox.ModAPI.IMyShipConnector) },
+        { "controller", typeof(Sandbox.ModAPI.IMyShipController) },
+        { "door", typeof(Sandbox.ModAPI.IMyDoor) },
+        { "drill", typeof(Sandbox.ModAPI.IMyShipDrill) },
+        { "exhaust", typeof(Sandbox.ModAPI.IMyExhaustBlock) },
+        { "functional", typeof(Sandbox.ModAPI.IMyFunctionalBlock) },
+        { "gas_generator", typeof(Sandbox.ModAPI.IMyGasGenerator) },
+        { "gas_tank", typeof(Sandbox.ModAPI.IMyGasTank) },
+        { "gatling", typeof(Sandbox.ModAPI.IMySmallGatlingGun) },
+        { "grinder", typeof(Sandbox.ModAPI.IMyShipGrinder) },
+        { "gun", typeof(Sandbox.ModAPI.IMyUserControllableGun) },
+        { "gyro", typeof(Sandbox.ModAPI.IMyGyro) },
+        { "jump_drive", typeof(Sandbox.ModAPI.IMyJumpDrive) },
+        { "laser_antenna", typeof(Sandbox.ModAPI.IMyLaserAntenna) },
+        { "light", typeof(Sandbox.ModAPI.IMyLightingBlock) },
+        { "mechanical_connection", typeof(Sandbox.ModAPI.IMyMechanicalConnectionBlock) },
+        { "missile_launcher", typeof(Sandbox.ModAPI.IMySmallMissileLauncher) },
+        { "ore_detector", typeof(Sandbox.ModAPI.IMyOreDetector) },
+        { "piston", typeof(Sandbox.ModAPI.IMyPistonBase) },
+        { "power_producer", typeof(Sandbox.ModAPI.IMyPowerProducer) },
+        { "production", typeof(Sandbox.ModAPI.IMyProductionBlock) },
+        { "programmable", typeof(Sandbox.ModAPI.IMyProgrammableBlock) },
+        { "projector", typeof(Sandbox.ModAPI.IMyProjector) },
+        { "radio_antenna", typeof(Sandbox.ModAPI.IMyRadioAntenna) },
+        { "reactor", typeof(Sandbox.ModAPI.IMyReactor) },
+        { "remote_control", typeof(Sandbox.ModAPI.IMyRemoteControl) },
+        { "sensor", typeof(Sandbox.ModAPI.IMySensorBlock) },
+        { "sorter", typeof(Sandbox.ModAPI.IMyConveyorSorter) },
+        { "stator", typeof(Sandbox.ModAPI.IMyMotorStator) },
+        { "store", typeof(Sandbox.ModAPI.IMyStoreBlock) },
+        { "text_panel", typeof(Sandbox.ModAPI.IMyTextPanel) },
+        { "text", typeof(Sandbox.ModAPI.IMyTextSurface) },
+        { "suspension", typeof(Sandbox.ModAPI.IMyMotorSuspension) },
+        { "thrust", typeof(Sandbox.ModAPI.IMyThrust) },
+        { "tool", typeof(Sandbox.ModAPI.IMyShipToolBase) },
+        { "turret", typeof(Sandbox.ModAPI.IMyLargeTurretBase) },
+        { "upgradable", typeof(Sandbox.ModAPI.IMyUpgradableBlock) },
+        { "upgrade_module", typeof(Sandbox.ModAPI.IMyUpgradeModule) },
+        { "warhead", typeof(Sandbox.ModAPI.IMyWarhead) },
+        { "welder", typeof(Sandbox.ModAPI.IMyShipWelder) },
+        { "wheel", typeof(Sandbox.ModAPI.IMyWheel) }
+    };
+
     [DataMember(Name = "type")]
     public string Type { get; set; }
     [DataMember(Name = "name")]
@@ -52,6 +105,9 @@ internal class BlockInformation
     [DataMember(Name = "working")]
     public bool Working { get; set; }
 
+    [DataMember(Name = "interfaces")]
+    public List<string> Interfaces { get; set; } = new List<string>();
+
     public BlockInformation() {}
     public BlockInformation(Sandbox.ModAPI.IMyTerminalBlock block)
     {
@@ -61,11 +117,23 @@ internal class BlockInformation
         Mass = block.Mass;
         Functional = block.IsFunctional;
         Working = block.IsWorking;
+
+        // Implemented for all applicable blocks
+        Interfaces.Add("name");
+        Interfaces.Add("data");
+
+        foreach (var mapping in InterfaceMapping)
+        {
+            if (mapping.Value.IsAssignableFrom(block.GetType()))
+                Interfaces.Add(mapping.Key);
+        }
+
+        Interfaces.Sort();
     }
 }
 
 [DataContract]
-internal class LightBlock
+public class LightBlock
 {
     [DataMember(Name = "color")]
     public Color Color { get; set; }
@@ -97,7 +165,7 @@ internal class LightBlock
 }
 
 [DataContract]
-internal class ThrustBlock
+public class ThrustBlock
 {
     [DataMember(Name = "direction")]
     public string Direction { get; set; }
@@ -139,7 +207,7 @@ internal class ThrustBlock
 }
 
 [DataContract]
-internal class GyroBlock
+public class GyroBlock
 {
     [DataMember(Name = "power")]
     public float? Power { get; set; }
@@ -162,5 +230,25 @@ internal class GyroBlock
         Roll = block.Roll;
     }
 }
+
+[DataContract]
+public class ProgrammableBlock
+{
+    [DataMember(Name = "running")]
+    public bool Running { get; set; }
+    [DataMember(Name = "compile_errors")]
+    public bool HasErrors { get; set; }
+    [DataMember(Name = "default_argument", EmitDefaultValue = false)]
+    public string DefaultArgument { get; set; }
+
+    public ProgrammableBlock() {}
+    public ProgrammableBlock(Sandbox.ModAPI.IMyProgrammableBlock block)
+    {
+        Running = block.IsRunning;
+        HasErrors = block.HasCompileErrors;
+        DefaultArgument = block.TerminalRunArgument;
+    }
+}
+
 
 }

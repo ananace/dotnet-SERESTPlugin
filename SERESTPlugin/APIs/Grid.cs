@@ -1,355 +1,409 @@
+using SERESTPlugin.Attributes;
+using SERESTPlugin.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using SERESTPlugin.Util;
 
 namespace SERESTPlugin.APIs
 {
 
-public class Grid : IAPI
+public abstract class R0GridAPI : BaseAPI
 {
-    public void Register(APIServer server)
+    public abstract MyCubeGrid FindGrid();
+    public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+    public virtual bool CanCommunicate()
     {
-        var api = server.RegisterAPI("grid");
-
-        var local = api.RegisterSubAPI("local");
-        RegisterGridActions(local, (ev) => { 
-            var grid = FindLocalGrid();
-            if (grid == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No local grid");
-                return null;
-            }
-            return grid;
-        });
-
-        var byId = api.RegisterSubAPI("id/(?<id>[0-9]+)");
-        RegisterGridActions(byId, (ev) => {
-            var grid = FindGrid(long.Parse(ev.Components["id"]));
-            if (grid == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No grid found with the given ID");
-                return null;
-            }
-
-            if (!PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the grid");
-                return null;
-            }
-
-            return grid;
-        });
-
-        var byName = api.RegisterSubAPI("name/(?<name>[^/]+)");
-        RegisterGridActions(byName, (ev) => {
-            var grid = FindGrid(ev.Components["name"]);
-            if (grid == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No grids found with the given name");
-                return null;
-            }
-
-            if (!PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the grid");
-                return null;
-            }
-
-            return grid;
-        });
-
-        var multiGridByName = api.RegisterSubAPI("names/(?<name>[^/]+)");
-        RegisterMultiGridActions(byName, (ev) => {
-            var grids = FindGrids(ev.Components["name"]);
-            if (grids == null)
-                return null;
-            return grids.Where(grid => PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId));
-        });
-
-        api = server.RegisterAPI("block/id/(?<block_id>[0-9]+)");
-        RegisterBlockActions(api, (ev) => {
-            var block = FindGlobalBlock(long.Parse(ev.Components["block_id"]));
-            if (block == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
-                return null;
-            }
-
-            if (!PlayerCanCommunicate(block, Sandbox.Game.World.MySession.Static.LocalPlayerId))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the block");
-                return null;
-            }
-
-            return block;
-        });
+        if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
+            return PlayerCanCommunicate(Grid, Sandbox.Game.World.MySession.Static.LocalPlayerId);
+        return true;
     }
 
-    void RegisterGridActions(APIRegister api, Func<HTTPEventArgs, MyCubeGrid> findMethod)
+    // TODO: Optional disable
+    protected bool PlayerCanCommunicate(MyCubeGrid grid, long playerId)
     {
-        api.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-            var grid = findMethod(ev);
-            if (grid == null)
-                return;
+        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
+        if (ply == null)
+        {
+            Logger.Debug($"Player: null");
+            return true;
+        }
 
-            ev.Context.Response.CloseJSON(new DataTypes.GridInformation(grid));
-        });
+        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
+        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
+        {
+            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
+            if (antennas.Any(ant => distance <= ant.Radius))
+                return true;
+        }
 
-        api.RegisterRequest("GET", "dampeners", (s, ev) => {
-            ev.Handled = true;
-            var grid = findMethod(ev);
-            if (grid == null)
-                return;
-
-            ev.Context.Response.CloseString(grid.DampenersEnabled.ToString());
-        });
-
-        var blockApiByName = api.RegisterSubAPI("block/name/(?<block_name>[^/]+)");
-        RegisterBlockActions(blockApiByName, (ev) => {
-            var grid = findMethod(ev);
-            if (grid == null)
-                return null;
-            var block = FindBlock(grid, System.Web.HttpUtility.UrlDecode(ev.Components["block_name"]));
-            if (block == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No block found with the given name");
-                return null;
-            }
-            return block;
-        });
-
-        var multiBlockApiByName = api.RegisterSubAPI("blocks/name/(?<block_name>[^/]+)");
-        RegisterMultiBlockActions(multiBlockApiByName, (ev) => {
-            var grid = findMethod(ev);
-            if (grid == null)
-                return null;
-            return FindBlocks(grid, System.Web.HttpUtility.UrlDecode(ev.Components["block_name"]));
-        });
-
-        var multiBlockApiByGroup = api.RegisterSubAPI("blocks/group/(?<block_group>[^/]+)");
-        RegisterMultiBlockActions(multiBlockApiByGroup, (ev) => {
-            var grid = findMethod(ev);
-            if (grid == null)
-                return null;
-            return FindBlocksByGroup(grid, System.Web.HttpUtility.UrlDecode(ev.Components["block_group"]));
-        });
-
-        var blockApiById = api.RegisterSubAPI("block/id/(?<block_id>[0-9]+)");
-        RegisterBlockActions(blockApiById, (ev) => {
-            var grid = findMethod(ev);
-            if (grid == null)
-                return null;
-            var block = FindBlock(grid, long.Parse(ev.Components["block_id"]));
-            if (block == null)
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
-                return null;
-            }
-            return block;
-        });
+        if (distance < 1000)
+            return true;
+        throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target grid");
     }
 
-    void RegisterMultiGridActions(APIRegister api, Func<HTTPEventArgs, IEnumerable<MyCubeGrid>> findMethod)
+    [APIEndpoint("GET", "/")]
+    public DataTypes.GridInformation GetInformation()
     {
-        api.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-            var grids = findMethod(ev);
-            ev.Context.Response.CloseJSON(grids.Select(g => new DataTypes.GridInformation(g)));
-        });
-
-        var multiBlockApiByName = api.RegisterSubAPI("blocks/name/(?<block_name>[^/]+)");
-        RegisterMultiBlockActions(multiBlockApiByName, (ev) => {
-            var grids = findMethod(ev);
-            return grids.SelectMany(g => FindBlocks(g, System.Web.HttpUtility.UrlDecode(ev.Components["block_name"])));
-        });
+        return new DataTypes.GridInformation(Grid);
     }
 
-    void RegisterBlockActions(APIRegister blockApi, Func<HTTPEventArgs, IMyTerminalBlock> findMethod)
+    [APIEndpoint("GET", "/dampeners")]
+    public bool GetDampeners()
     {
-        blockApi.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+        return Grid.DampenersEnabled;
+    }
+    [APIEndpoint("POST", "/dampeners")]
+    public void SetDampeners(bool? wanted = null)
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
+    }
+}
 
-            ev.Context.Response.CloseJSON(new DataTypes.BlockInformation(block));
-        });
+public abstract class R0BlockAPI : BaseAPI
+{
+    public abstract IMyTerminalBlock FindBlock();
+    public IMyTerminalBlock Block { get { return Data["block"] as IMyTerminalBlock; } }
 
-        blockApi.RegisterRequest("GET", "enabled", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyFunctionalBlock functionalBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a functional block");
-                return;
-            }
+    public virtual bool CanCommunicate()
+    {
+        if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
+            return PlayerCanCommunicate(Block, Sandbox.Game.World.MySession.Static.LocalPlayerId);
+        return true;
+    }
 
-            ev.Context.Response.CloseString(functionalBlock.Enabled.ToString());
-        });
-        blockApi.RegisterRequest("POST", "enabled", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyFunctionalBlock functionalBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a functional block");
-                return;
-            }
+    protected bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+    {
+        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
+        if (ply == null)
+        {
+            Logger.Debug($"Player: null");
+            return true;
+        }
+        var grid = block.CubeGrid as MyCubeGrid;
 
-            var wanted = true;
-            if (ev.Context.Request.TryReadObject(out string data))
-            {
-                if (data == "yes" || data == "on" || data == "no" || data == "off")
-                    wanted = data == "yes" || data == "on";
-                else if (data.TryConvert(out bool asBool))
-                    wanted = asBool;
-                else if (data.TryConvert(out int asInt))
-                    wanted = asInt != 0;
-            }
+        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
+        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
+        {
+            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
+            if (antennas.Any(ant => distance <= ant.Radius))
+                return true;
+        }
 
-            functionalBlock.Enabled = wanted;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("DELETE", "enabled", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyFunctionalBlock functionalBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a functional block");
-                return;
-            }
+        if (distance < 1000)
+            return true;
+        throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target block");
+    }
 
-            functionalBlock.Enabled = false;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
+    [APIEndpoint("GET", "/")]
+    public DataTypes.BlockInformation GetInformation()
+    {
+        return new DataTypes.BlockInformation(Block);
+    }
 
-        blockApi.RegisterRequest("GET", "name", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+    [APIEndpoint("GET", "/name")]
+    public string GetName()
+    {
+        return Block.CustomName;
+    }
+    [APIEndpoint("POST", "/name")]
+    public void SetName(string name)
+    {
+        Block.CustomName = name;
+    }
 
-            ev.Context.Response.CloseString(block.CustomName);
-        });
-        blockApi.RegisterRequest("POST", "name", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+    [APIEndpoint("GET", "/data")]
+    public string GetData()
+    {
+        return Block.CustomData;
+    }
+    [APIEndpoint("POST", "/data")]
+    public void SetData(string data)
+    {
+        Block.CustomData = data;
+    }
+    [APIEndpoint("DELETE", "/data")]
+    public void RemoveData()
+    {
+        Block.CustomData = null;
+    }
 
-            if (!ev.Context.Request.TryReadObject(out string text))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide a new name");
-                return;
-            }
+    [APIEndpoint("GET", "/functional")]
+    public bool GetFunctional()
+    {
+        if (!(Block is IMyFunctionalBlock functionalBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
+        return functionalBlock.Enabled;
+    }
+    [APIEndpoint("POST", "/functional")]
+    public void SetFunctional(bool wanted = true)
+    {
+        if (!(Block is IMyFunctionalBlock functionalBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
+        
+        functionalBlock.Enabled = wanted;
+    }
+    [APIEndpoint("DELETE", "/functional")]
+    public void UnsetFunctional()
+    {
+        if (!(Block is IMyFunctionalBlock functionalBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
+        
+        functionalBlock.Enabled = false;
+    }
 
-            block.CustomName = text;
+    [APIEndpoint("GET", "/text")]
+    public string GetText()
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+        
+        return textBlock.GetText();
+    }
+    [APIEndpoint("POST", "/text")]
+    public void SetText(string text)
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+        
+        textBlock.WriteText(text);
+    }
+    [APIEndpoint("DELETE", "/text")]
+    public void RemoveText()
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+        
+        textBlock.WriteText("");
+    }
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
+    [APIEndpoint("GET", "/light")]
+    public DataTypes.LightBlock GetLight()
+    {
+        if (!(Block is IMyLightingBlock lightBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement light");
 
-        blockApi.RegisterRequest("GET", "text", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+        return new DataTypes.LightBlock(lightBlock);
+    }
+    [APIEndpoint("POST", "/light")]
+    public void SetLight(DataTypes.LightBlock settings)
+    {
+        if (!(Block is IMyLightingBlock lightBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement light");
 
-            if (!(block is IMyProgrammableBlock || block is IMyTextSurface))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Block contains no text");
-                return;
-            }
+        if (settings.BlinkIntervalSeconds.HasValue)
+            lightBlock.BlinkIntervalSeconds = settings.BlinkIntervalSeconds.Value;
+        if (settings.BlinkLength.HasValue)
+            lightBlock.BlinkLength = settings.BlinkLength.Value;
+        if (settings.BlinkOffset.HasValue)
+            lightBlock.BlinkOffset = settings.BlinkOffset.Value;
+        if (settings.Color != null)
+            lightBlock.Color = settings.Color.ToColor();
+        if (settings.Falloff.HasValue)
+            lightBlock.Falloff = settings.Falloff.Value;
+        if (settings.Intensity.HasValue)
+            lightBlock.Intensity = settings.Intensity.Value;
+        if (settings.Radius.HasValue)
+            lightBlock.Radius = settings.Radius.Value;
+    }
 
-            if (block is IMyProgrammableBlock pb)
-                ev.Context.Response.CloseString(pb.ProgramData);
-            else if (block is IMyTextSurface panel)
-                ev.Context.Response.CloseString(panel.GetText());
-        });
-        blockApi.RegisterRequest("POST", "text", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyProgrammableBlock || block is IMyTextSurface))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Block contains no text");
-                return;
-            }
+    [APIEndpoint("GET", "/thrust")]
+    public DataTypes.ThrustBlock GetThrust()
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
 
-            if (!ev.Context.Request.TryReadObject(out string text))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide new text");
-                return;
-            }
+        return new DataTypes.ThrustBlock(thrustBlock);
+    }
+    [APIEndpoint("POST", "/thrust")]
+    public void SetThrust(DataTypes.ThrustBlock settings)
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
 
-            if (block is IMyProgrammableBlock pb)
-                pb.ProgramData = text;
-            else if (block is IMyTextSurface panel)
-                panel.WriteText(text);
+        if (settings.Override.HasValue)
+            thrustBlock.ThrustOverride = settings.Override.Value;
+        if (settings.OverridePercentage.HasValue)
+            thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
+    }
+    [APIEndpoint("DELETE", "/thrust")]
+    public void StopThrust()
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
+        thrustBlock.ThrustOverride = 0;
+    }
 
-        blockApi.RegisterRequest("GET", "data", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+    [APIEndpoint("GET", "/gyro")]
+    public DataTypes.GyroBlock GetGyro()
+    {
+        if (!(Block is IMyGyro gyroBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement gyro");
 
-            ev.Context.Response.CloseString(block.CustomData);
-        });
-        blockApi.RegisterRequest("POST", "data", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+        return new DataTypes.GyroBlock(gyroBlock);
+    }
+    [APIEndpoint("POST", "/gyro")]
+    public void SetGyro(DataTypes.GyroBlock settings)
+    {
+        if (!(Block is IMyGyro gyroBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement gyro");
 
-            if (!ev.Context.Request.TryReadObject(out string text))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide the new data");
-                return;
-            }
+        if (settings.Override.HasValue)
+            gyroBlock.GyroOverride = settings.Override.Value;
+        if (settings.Power.HasValue)
+            gyroBlock.GyroPower = settings.Power.Value;
+        if (settings.Pitch.HasValue)
+            gyroBlock.Pitch = settings.Pitch.Value;
+        if (settings.Roll.HasValue)
+            gyroBlock.Roll = settings.Roll.Value;
+        if (settings.Yaw.HasValue)
+            gyroBlock.Yaw = settings.Yaw.Value;
+    }
+    [APIEndpoint("DELETE", "/gyro")]
+    public void ResetGyro()
+    {
+        if (!(Block is IMyGyro gyroBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement gyro");
 
-            block.CustomData = text;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
+        gyroBlock.GyroOverride = false;
+        gyroBlock.GyroPower = 1.0f;
+        gyroBlock.Pitch = 0;
+        gyroBlock.Yaw = 0;
+        gyroBlock.Roll = 0;
+    }
 
-        blockApi.RegisterRequest("GET", "light", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
+    [APIEndpoint("GET", "/programmable")]
+    public DataTypes.ProgrammableBlock GetProgram()
+    {
+        if (!(Block is IMyProgrammableBlock programmableBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
-            if (!(findMethod(ev) is IMyLightingBlock lightBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a light block");
-                return;
-            }
+        return new DataTypes.ProgrammableBlock(programmableBlock);
+    }
+    [APIEndpoint("POST", "/programmable/recompile")]
+    public void RecompileProgram()
+    {
+        if (!(Block is IMyProgrammableBlock programmableBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
-            ev.Context.Response.CloseJSON(new DataTypes.LightBlock(lightBlock));
-        });
-        blockApi.RegisterRequest("POST", "light", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyLightingBlock lightBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a light block");
-                return;
-            }
+        programmableBlock.Recompile();
+    }
+    [APIEndpoint("POST", "/programmable/run")]
+    public void RunProgram(string argument = null)
+    {
+        if (!(Block is IMyProgrammableBlock programmableBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
-            var settings = ev.Context.Request.ReadJSON<DataTypes.LightBlock>();
+        if (string.IsNullOrEmpty(argument))
+            programmableBlock.Run();
+        else
+            programmableBlock.Run(argument);
+    }
+    [APIEndpoint("GET", "/programmable/script")]
+    public string GetProgramScript()
+    {
+        if (!(Block is IMyProgrammableBlock programmableBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
+        
+        return programmableBlock.ProgramData;
+    }
+    [APIEndpoint("POST", "/programmable/script")]
+    public void SetProgramScript(string text)
+    {
+        if (!(Block is IMyProgrammableBlock programmableBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
+        programmableBlock.ProgramData = text;
+    }
+}
+
+public abstract class R0MultiBlockAPI : BaseAPI
+{
+    public abstract IEnumerable<IMyTerminalBlock> FindBlocks();
+    public IEnumerable<IMyTerminalBlock> Blocks { get { return Data["blocks"] as IEnumerable<IMyTerminalBlock>; } }
+
+    public virtual bool CanCommunicate()
+    {
+        if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
+            return PlayerCanCommunicate(Blocks.First(), Sandbox.Game.World.MySession.Static.LocalPlayerId);
+        return true;
+    }
+
+    protected bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+    {
+        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
+        if (ply == null)
+        {
+            Logger.Debug($"Player: null");
+            return true;
+        }
+        var grid = block.CubeGrid as MyCubeGrid;
+
+        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
+        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
+        {
+            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
+            if (antennas.Any(ant => distance <= ant.Radius))
+                return true;
+        }
+
+        if (distance < 1000)
+            return true;
+        throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target block");
+    }
+
+    [APIEndpoint("GET", "/")]
+    public IEnumerable<DataTypes.BlockInformation> GetInformation()
+    {
+        return Blocks.Select(b => new DataTypes.BlockInformation(b));
+    }
+    [APIEndpoint("POST", "/name")]
+    public void SetName(string name)
+    {
+        Blocks.ForEach(b => b.CustomName = name);
+    }
+
+    [APIEndpoint("POST", "/data")]
+    public void SetData(string data)
+    {
+        Blocks.ForEach(b => b.CustomData = data);
+    }
+    [APIEndpoint("DELETE", "/data")]
+    public void RemoveData()
+    {
+        Blocks.ForEach(b => b.CustomData = null);
+    }
+
+    [APIEndpoint("POST", "/functional")]
+    public void SetFunctional(bool wanted = true)
+    {
+        Blocks.OfType<IMyFunctionalBlock>().ForEach(b => b.Enabled = wanted);
+    }
+    [APIEndpoint("DELETE", "/functional")]
+    public void UnsetFunctional()
+    {
+        Blocks.OfType<IMyFunctionalBlock>().ForEach(b => b.Enabled = false);
+    }
+
+    [APIEndpoint("POST", "/text")]
+    public void SetText(string data)
+    {
+        Blocks.OfType<IMyTextSurface>().ForEach(b => b.WriteText(data));
+    }
+    [APIEndpoint("DELETE", "/text")]
+    public void RemoveText()
+    {
+        Blocks.OfType<IMyTextSurface>().ForEach(b => b.WriteText(""));
+    }
+
+    [APIEndpoint("POST", "/light")]
+    public void SetLight(DataTypes.LightBlock settings)
+    {
+        foreach (var lightBlock in Blocks.OfType<IMyLightingBlock>())
+        {
             if (settings.BlinkIntervalSeconds.HasValue)
                 lightBlock.BlinkIntervalSeconds = settings.BlinkIntervalSeconds.Value;
             if (settings.BlinkLength.HasValue)
@@ -364,70 +418,31 @@ public class Grid : IAPI
                 lightBlock.Intensity = settings.Intensity.Value;
             if (settings.Radius.HasValue)
                 lightBlock.Radius = settings.Radius.Value;
+        }
+    }
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-
-        blockApi.RegisterRequest("GET", "thruster", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyThrust thrustBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a thruster block");
-                return;
-            }
-
-            ev.Context.Response.CloseJSON(new DataTypes.ThrustBlock(thrustBlock));
-        });
-        blockApi.RegisterRequest("POST", "thruster", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyThrust thrustBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a thruster block");
-                return;
-            }
-
-            var settings = ev.Context.Request.ReadJSON<DataTypes.ThrustBlock>();
-
+    [APIEndpoint("POST", "/thrust")]
+    public void SetThrust(DataTypes.ThrustBlock settings)
+    {
+        foreach (var thrustBlock in Blocks.OfType<IMyThrust>())
+        {
             if (settings.Override.HasValue)
                 thrustBlock.ThrustOverride = settings.Override.Value;
             if (settings.OverridePercentage.HasValue)
                 thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
+        }
+    }
+    [APIEndpoint("DELETE", "/thrust")]
+    public void StopThrust()
+    {
+        Blocks.OfType<IMyThrust>().ForEach(b => b.ThrustOverride = 0);
+    }
 
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-
-        blockApi.RegisterRequest("GET", "gyro", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyGyro gyroBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a gyro block");
-                return;
-            }
-
-            ev.Context.Response.CloseJSON(new DataTypes.GyroBlock(gyroBlock));
-        });
-        blockApi.RegisterRequest("POST", "gyro", (s, ev) => {
-            ev.Handled = true;
-            var block = findMethod(ev);
-            if (block == null)
-                return;
-            if (!(block is IMyGyro gyroBlock))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a gyro block");
-                return;
-            }
-
-            var settings = ev.Context.Request.ReadJSON<DataTypes.GyroBlock>();
-
+    [APIEndpoint("POST", "/gyro")]
+    public void SetGyro(DataTypes.GyroBlock settings)
+    {
+        foreach (var gyroBlock in Blocks.OfType<IMyGyro>())
+        {
             if (settings.Override.HasValue)
                 gyroBlock.GyroOverride = settings.Override.Value;
             if (settings.Power.HasValue)
@@ -438,226 +453,474 @@ public class Grid : IAPI
                 gyroBlock.Roll = settings.Roll.Value;
             if (settings.Yaw.HasValue)
                 gyroBlock.Yaw = settings.Yaw.Value;
-
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
+        }
     }
-
-    void RegisterMultiBlockActions(APIRegister blockApi, Func<HTTPEventArgs, IEnumerable<IMyTerminalBlock>> findMethod)
+    [APIEndpoint("DELETE", "/gyro")]
+    public void ResetGyro()
     {
-        blockApi.RegisterRequest("GET", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            ev.Context.Response.CloseJSON(blocks.Select(b => new DataTypes.BlockInformation(b)));
-        });
-        blockApi.RegisterRequest("POST", "enabled", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            var wanted = true;
-            if (ev.Context.Request.TryReadObject(out string data))
-            {
-                if (data == "yes" || data == "on" || data == "no" || data == "off")
-                    wanted = data == "yes" || data == "on";
-                else if (data.TryConvert(out bool asBool))
-                    wanted = asBool;
-                else if (data.TryConvert(out int asInt))
-                    wanted = asInt != 0;
-            }
-
-            foreach (var functionalBlock in blocks.Select(b => b as IMyFunctionalBlock).Where(b => b != null))
-                functionalBlock.Enabled = wanted;
-
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("DELETE", "enabled", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            foreach (var functionalBlock in blocks.Select(b => b as IMyFunctionalBlock).Where(b => b != null))
-                functionalBlock.Enabled = false;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("POST", "name", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            if (!ev.Context.Request.TryReadObject(out string text))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide a new name");
-                return;
-            }
-            foreach (var terminalBlock in blocks)
-                terminalBlock.CustomName = text;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("POST", "data", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            if (!ev.Context.Request.TryReadObject(out string text))
-            {
-                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide new data");
-                return;
-            }
-            foreach (var terminalBlock in blocks)
-                terminalBlock.CustomData = text;
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("POST", "light", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            var settings = ev.Context.Request.ReadJSON<DataTypes.LightBlock>();
-
-            foreach (var lightBlock in blocks.Select(b => b as IMyLightingBlock).Where(b => b != null))
-            {
-                if (settings.BlinkIntervalSeconds.HasValue)
-                    lightBlock.BlinkIntervalSeconds = settings.BlinkIntervalSeconds.Value;
-                if (settings.BlinkLength.HasValue)
-                    lightBlock.BlinkLength = settings.BlinkLength.Value;
-                if (settings.BlinkOffset.HasValue)
-                    lightBlock.BlinkOffset = settings.BlinkOffset.Value;
-                if (settings.Color != null)
-                    lightBlock.Color = settings.Color.ToColor();
-                if (settings.Falloff.HasValue)
-                    lightBlock.Falloff = settings.Falloff.Value;
-                if (settings.Intensity.HasValue)
-                    lightBlock.Intensity = settings.Intensity.Value;
-                if (settings.Radius.HasValue)
-                    lightBlock.Radius = settings.Radius.Value;
-            }
-
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("POST", "thruster", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            var settings = ev.Context.Request.ReadJSON<DataTypes.ThrustBlock>();
-
-            foreach (var thrustBlock in blocks.Select(b => b as IMyThrust).Where(b => b != null))
-            {
-                if (settings.Override.HasValue)
-                    thrustBlock.ThrustOverride = settings.Override.Value;
-                if (settings.OverridePercentage.HasValue)
-                    thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
-            }
-
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-        blockApi.RegisterRequest("POST", "gyro", (s, ev) => {
-            ev.Handled = true;
-            var blocks = findMethod(ev);
-            if (blocks == null)
-                return;
-
-            var settings = ev.Context.Request.ReadJSON<DataTypes.GyroBlock>();
-
-            foreach (var gyroBlock in blocks.Select(b => b as IMyGyro).Where(b => b != null))
-            {
-                if (settings.Override.HasValue)
-                    gyroBlock.GyroOverride = settings.Override.Value;
-                if (settings.Power.HasValue)
-                    gyroBlock.GyroPower = settings.Power.Value;
-                if (settings.Pitch.HasValue)
-                    gyroBlock.Pitch = settings.Pitch.Value;
-                if (settings.Roll.HasValue)
-                    gyroBlock.Roll = settings.Roll.Value;
-                if (settings.Yaw.HasValue)
-                    gyroBlock.Yaw = settings.Yaw.Value;
-            }
-
-            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
-        });
-    }
-
-    MyCubeGrid FindLocalGrid()
-    {
-        return (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
-    }
-
-    MyCubeGrid FindGrid(string name)
-    {
-        name = System.Web.HttpUtility.UrlDecode(name);
-        return MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
-    }
-    IEnumerable<MyCubeGrid> FindGrids(string name)
-    {
-        name = System.Web.HttpUtility.UrlDecode(name);
-        return MyEntities.GetEntities().OfType<MyCubeGrid>().Where(x => x.DisplayName == name);
-    }
-
-    MyCubeGrid FindGrid(long id)
-    {
-        return MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.EntityId == id);
-    }
-
-    IMyTerminalBlock FindBlock(MyCubeGrid grid, string name)
-    {
-        return grid.GetFatBlocks().Select(b => b as IMyTerminalBlock).Where(b => b != null).FirstOrDefault(b => b.CustomName == name);
-    }
-    IEnumerable<IMyTerminalBlock> FindBlocks(MyCubeGrid grid, string name)
-    {
-        return grid.GetFatBlocks().Where(b => b is IMyTerminalBlock && (b as IMyTerminalBlock).CustomName == name).Select(b => b as IMyTerminalBlock);
-    }
-    IEnumerable<IMyTerminalBlock> FindBlocksByGroup(MyCubeGrid grid, string groupName)
-    {
-        List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-        foreach (var group in grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == groupName))
-            (group as IMyBlockGroup).GetBlocks(blocks);
-        return blocks;
-    }
-    IMyTerminalBlock FindBlock(MyCubeGrid grid, long id)
-    {
-        return grid.GetFatBlocks().FirstOrDefault(b => b.EntityId == id) as IMyTerminalBlock;
-    }
-
-    IMyTerminalBlock FindGlobalBlock(long id)
-    {
-        return MyEntities.GetEntityById(id) as IMyTerminalBlock;
-    }
-
-    // TODO: Optional disable
-    bool PlayerCanCommunicate(MyCubeGrid grid, long playerId)
-    {
-        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
-        if (ply == null)
+        foreach (var gyroBlock in Blocks.OfType<IMyGyro>())
         {
-            Logger.Debug($"Player: null");
-            return true;
+            gyroBlock.GyroOverride = false;
+            gyroBlock.GyroPower = 1.0f;
+            gyroBlock.Pitch = 0;
+            gyroBlock.Yaw = 0;
+            gyroBlock.Roll = 0;
+        }
+    }
+
+    [APIEndpoint("POST", "/programmable/recompile")]
+    public void RecompileProgram()
+    {
+        Blocks.OfType<IMyProgrammableBlock>().ForEach(b => b.Recompile());
+    }
+    [APIEndpoint("POST", "/programmable/run")]
+    public void RunProgram(string argument = null)
+    {
+        foreach (var programmableBlock in Blocks.OfType<IMyProgrammableBlock>())
+        {
+            if (string.IsNullOrEmpty(argument))
+                programmableBlock.Run();
+            else
+                programmableBlock.Run(argument);
+        }
+    }
+    [APIEndpoint("POST", "/programmable/script")]
+    public void SetProgramScript(string text)
+    {
+        Blocks.OfType<IMyProgrammableBlock>().ForEach(b => b.ProgramData = text);
+    }
+
+}
+
+
+
+[API("/r0/grid/local", Needs = new string[] { "grid" }, OnDedicated = false)]
+public class LocalGridAPI : R0GridAPI
+{
+    [APIData("grid")]
+    public override MyCubeGrid FindGrid()
+    {
+        var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+        if (grid == null)
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+        return grid;
+    }
+    [APIData("canCommunicate")]
+    public override bool CanCommunicate() { return true; }
+
+    [API("/block/id/(?<block_id>[0-9]+)", Needs = new string[] { "grid", "block" }, OnDedicated = false)]
+    public class BlockAPIByID : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate() { return true; }
+
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
+        {
+            if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
+            return block;
+        }
+    }
+
+    [API("/block/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "block" }, OnDedicated = false)]
+    public class BlockAPIByName : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate() { return true; }
+
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
+            return block;
+        }
+    }
+
+    [API("/blocks/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "blocks" }, OnDedicated = false)]
+    public class MultiBlockAPIByName : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate() { return true; }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+        }
+    }
+
+    [API("/blocks/group/(?<group_name>[^/]+)", Needs = new string[] { "grid", "blocks" }, OnDedicated = false)]
+    public class MultiBlockAPIByGroup : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate() { return true; }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
+                (group as IMyBlockGroup).GetBlocks(blocks);
+            return blocks;
+        }
+    }
+}
+
+[API("/r0/grid/id/(?<grid_id>[0-9]+)", Needs = new string[] { "grid", "canCommunicate" })]
+public class GridByIDAPI : R0GridAPI
+{
+    [APIData("grid")]
+    public override MyCubeGrid FindGrid()
+    {
+        if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+        var entity = MyEntities.GetEntityById(gridId);
+        if (entity == null)
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+        if (!(entity is MyCubeGrid grid))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+        return grid;
+    }
+
+    [APIData("canCommunicate")]
+    public override bool CanCommunicate()
+    {
+        return base.CanCommunicate();
+    }
+
+    [API("/block/id/(?<block_id>[0-9]+)", Needs = new string[] { "grid", "block", "canCommunicate" })]
+    public class BlockAPIByID : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+            var entity = MyEntities.GetEntityById(gridId);
+            if (entity == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+            if (!(entity is MyCubeGrid grid))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
         }
 
-        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
-        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
         {
-            var antennas = grid.GetFatBlocks().Where(b => b is IMyRadioAntenna && b.IsWorking).Select(b => b as IMyRadioAntenna);
-            if (antennas.Any(ant => distance <= ant.Radius))
-                return true;
+            if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
+            return block;
+        }
+    }
+
+    [API("/block/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "block", "canCommunicate" })]
+    public class BlockAPIByName : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+            var entity = MyEntities.GetEntityById(gridId);
+            if (entity == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+            if (!(entity is MyCubeGrid grid))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
         }
 
-        if (distance < 1000)
-            return true;
-        return false;
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
+            return block;
+        }
     }
-    bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+
+    [API("/blocks/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIByName : R0MultiBlockAPI
     {
-        return PlayerCanCommunicate(block.CubeGrid as MyCubeGrid, playerId);
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+            var entity = MyEntities.GetEntityById(gridId);
+            if (entity == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+            if (!(entity is MyCubeGrid grid))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+        }
+    }
+
+    [API("/blocks/group/(?<group_name>[^/]+)", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIByGroup : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+            var entity = MyEntities.GetEntityById(gridId);
+            if (entity == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+            if (!(entity is MyCubeGrid grid))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
+                (group as IMyBlockGroup).GetBlocks(blocks);
+            return blocks;
+        }
+    }
+}
+
+[API("/r0/grid/name/(?<grid_name>[^/]+)", Needs = new string[] { "grid", "canCommunicate" })]
+public class GridByNameAPI : R0GridAPI
+{
+    [APIData("grid")]
+    public override MyCubeGrid FindGrid()
+    {
+        var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+        var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+        if (grid == null)
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+        return grid;
+    }
+
+    [APIData("canCommunicate")]
+    public override bool CanCommunicate()
+    {
+        return base.CanCommunicate();
+    }
+
+    [API("/block/id/(?<block_id>[0-9]+)", Needs = new string[] { "grid", "block", "canCommunicate" })]
+    public class BlockAPIByID : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+            var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
+        {
+            if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
+            return block;
+        }
+    }
+
+    [API("/block/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "block", "canCommunicate" })]
+    public class BlockAPIByName : R0BlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+            var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("block")]
+        public override IMyTerminalBlock FindBlock()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
+            if (block == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
+            return block;
+        }
+    }
+
+    [API("/blocks/name/(?<block_name>[^/]+)", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIByName : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+            var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
+            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+        }
+    }
+
+    [API("/blocks/group/(?<group_name>[^/]+)", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIByGroup : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+            var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
+                (group as IMyBlockGroup).GetBlocks(blocks);
+            return blocks;
+        }
     }
 }
 

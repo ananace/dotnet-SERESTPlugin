@@ -79,11 +79,16 @@ static class HTTPExtensions
 
     public static void CloseJSON<T>(this System.Net.HttpListenerResponse resp, T json)
     {
+        CloseJSON(resp, json, typeof(T));
+    }
+
+    public static void CloseJSON(this System.Net.HttpListenerResponse resp, object json, Type jsonType)
+    {
         try
         {
             resp.ContentType = "application/json";
 
-            var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+            var serializer = new DataContractJsonSerializer(jsonType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
             using (var stream = new MemoryStream())
             {
                 serializer.WriteObject(stream, json);
@@ -115,13 +120,13 @@ static class HTTPExtensions
         {
             resp.StatusCode = (int)code;
 
-            if ((code == System.Net.HttpStatusCode.NoContent || code == System.Net.HttpStatusCode.Accepted || code == System.Net.HttpStatusCode.Created) && string.IsNullOrEmpty(message))
+            if ((code == System.Net.HttpStatusCode.OK || code == System.Net.HttpStatusCode.NoContent || code == System.Net.HttpStatusCode.Accepted || code == System.Net.HttpStatusCode.Created) && string.IsNullOrEmpty(message))
             {
                 resp.Close();
                 return;
             }
 
-            resp.CloseJSON(new CodeResponse { Status = code.ToString(), Message = message });
+            resp.CloseJSON(new CodeResponse { Message = message });
         }
         catch (ObjectDisposedException) { }
     }
@@ -130,7 +135,7 @@ static class HTTPExtensions
     [DataContract]
     class CodeResponse
     {
-        [DataMember(Name = "status")]
+        [DataMember(Name = "status", EmitDefaultValue = false)]
         public string Status { get; set; }
         [DataMember(Name = "message", EmitDefaultValue = false)]
         public string Message { get; set; }

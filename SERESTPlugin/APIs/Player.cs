@@ -1,68 +1,87 @@
 using SERESTPlugin.APIs.DataTypes;
+using SERESTPlugin.Attributes;
 using SERESTPlugin.Util;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace SERESTPlugin.APIs
 {
-    class Player : IAPI
+
+[API("/r0/player", OnDedicated = false)]
+public class LocalPlayerAPI : BaseAPI
+{
+    [APIEndpoint("GET", "/")]
+    public void PlayerStatus()
     {
-        public void Register(APIServer server)
+        var status = new PlayerStatus(Sandbox.Game.World.MySession.Static.LocalCharacter);
+        Response.CloseJSON(status);
+    }
+
+    [APIEndpoint("GET", "/jetpack")]
+    public bool GetJetpack()
+    {
+        return Sandbox.Game.World.MySession.Static.LocalCharacter.JetpackRunning;
+    }
+    [APIEndpoint("POST", "/jetpack", NeedsBody = true)]
+    public void SetJetpack()
+    {
+        var wanted = true;
+        if (Request.TryReadObject(out string data))
         {
-            var api = server.RegisterAPI("player");
+            if (data == "yes" || data == "on" || data == "no" || data == "off")
+                wanted = data == "yes" || data == "on";
+            else if (data.TryConvert(out bool asBool))
+                wanted = asBool;
+            else if (data.TryConvert(out int asInt))
+                wanted = asInt != 0;
+        }
 
-            api.RegisterRequest("GET", "", (s, ev) => {
-                ev.Handled = true;
-                var status = new PlayerStatus(Sandbox.Game.World.MySession.Static.LocalCharacter);
-                ev.Context.Response.CloseJSON(status);
-            });
+        Sandbox.Game.World.MySession.Static.LocalCharacter.JetpackComp.TurnOnJetpack(wanted);
+    }
+}
 
-            api.RegisterRequest("GET", "jetpack", (s, ev) => {
-                ev.Handled = true;
-                ev.Context.Response.CloseString(Sandbox.Game.World.MySession.Static.LocalCharacter.JetpackRunning.ToString());
-            });
-            api.RegisterRequest("POST", "jetpack", (s, ev) => {
-                ev.Handled = true;
-                var wanted = true;
-                if (ev.Context.Request.TryReadObject(out string data))
-                {
-                    if (data == "yes" || data == "on" || data == "no" || data == "off")
-                        wanted = data == "yes" || data == "on";
-                    else if (data.TryConvert(out bool asBool))
-                        wanted = asBool;
-                    else if (data.TryConvert(out int asInt))
-                        wanted = asInt != 0;
-                }
+[API("/r0/players")]
+public class PlayerAPI : BaseAPI
+{
+    [APIEndpoint("GET", "/")]
+    public IEnumerable<string> PlayerList()
+    {
+        return Sandbox.Game.World.MySession.Static.Players.GetAllIdentitiesOrderByName().Select((id) => id.Value.DisplayName);
+    }
 
-                Sandbox.Game.World.MySession.Static.LocalCharacter.JetpackComp.TurnOnJetpack(wanted);
-            });
+    [API("/(?<name>[^/]+)", Needs = new string[] { "player" })]
+    public class SpecificPlayerAPI : BaseAPI
+    {
+        [APIData("player")]
+        public Sandbox.Game.World.MyPlayer FindPlayer()
+        {
+            var name = EventArgs.Components["name"];
+            var player = Sandbox.Game.World.MySession.Static.Players.GetPlayerByName(name);
 
-            var multiApi = server.RegisterAPI("players");
-            multiApi.RegisterRequest("GET", (s, ev) => {
-                ev.Handled = true;
-                var names = Sandbox.Game.World.MySession.Static.Players.GetAllIdentitiesOrderByName().Select((id) => id.Value.DisplayName);
-                var list = new PlayerList{ Names = names.ToArray() };
+            if (player == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No player with such name");
 
-                ev.Context.Response.CloseJSON(list);
-            });
+            return player;
+        }
+        public Sandbox.Game.World.MyPlayer Player { get { return Data["player"] as Sandbox.Game.World.MyPlayer; }}
 
-            var other = multiApi.RegisterSubAPI("(?<name>[^/]+)");
-            other.RegisterRequest("GET", "friendly", (s, ev) => {
-                ev.Handled = true;
-                var name = ev.Components["name"];
-                var player = Sandbox.Game.World.MySession.Static.Players.GetPlayerByName(name);
+        [APIData("localFaction")]
+        public Sandbox.Game.World.MyFaction FindFaction()
+        {
+            var faction = Sandbox.Game.World.MySession.Static.Factions.GetPlayerFaction(Sandbox.Game.World.MySession.Static.LocalPlayerId);
+            if (faction == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "Local player is not in a faction");
 
-                if (player == null)
-                    ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No such player");
-                else
-                {
-                    var faction = Sandbox.Game.World.MySession.Static.Factions.GetPlayerFaction(Sandbox.Game.World.MySession.Static.LocalPlayerId);
-                    if (faction == null)
-                        ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Local player is not in a faction");
-                    else
-                        ev.Context.Response.CloseString(faction.IsFriendly(player.Identity.IdentityId).ToString());
-                }
-            });
+            return faction;
+        }
+        public Sandbox.Game.World.MyFaction LocalFaction { get { return Data["localFaction"] as Sandbox.Game.World.MyFaction; }}
+
+        [APIEndpoint("GET", "/friendly", NeedsData = new string[] { "localFaction" })]
+        public void IsFriendly()
+        {
+            Response.CloseString(LocalFaction.IsFriendly(Player.Identity.IdentityId).ToString());
         }
     }
+}
+
 }

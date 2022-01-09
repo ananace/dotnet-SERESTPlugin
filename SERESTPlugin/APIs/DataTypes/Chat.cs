@@ -4,7 +4,7 @@ namespace SERESTPlugin.APIs.DataTypes
 {
 
 [DataContract]
-internal class ChatMessage
+public class ChatMessage
 {
     [DataMember(Name = "sender")]
     public long Sender { get; set; }
@@ -41,7 +41,7 @@ internal class ChatMessage
 }
 
 [DataContract]
-internal class ChatHistory
+public class ChatHistory
 {
     [DataMember(Name = "messages")]
     public ChatMessage[] Messages { get; set; }
