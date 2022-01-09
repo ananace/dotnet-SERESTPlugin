@@ -33,6 +33,13 @@ public class Grid : IAPI
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No grid found with the given ID");
                 return null;
             }
+
+            if (!PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId))
+            {
+                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the grid");
+                return null;
+            }
+
             return grid;
         });
 
@@ -44,11 +51,23 @@ public class Grid : IAPI
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No grids found with the given name");
                 return null;
             }
+
+            if (!PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId))
+            {
+                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the grid");
+                return null;
+            }
+
             return grid;
         });
 
         var multiGridByName = api.RegisterSubAPI("names/(?<name>[^/]+)");
-        RegisterMultiGridActions(byName, (ev) => FindGrids(ev.Components["name"]));
+        RegisterMultiGridActions(byName, (ev) => {
+            var grids = FindGrids(ev.Components["name"]);
+            if (grids == null)
+                return null;
+            return grids.Where(grid => PlayerCanCommunicate(grid, Sandbox.Game.World.MySession.Static.LocalPlayerId));
+        });
 
         api = server.RegisterAPI("block/id/(?<block_id>[0-9]+)");
         RegisterBlockActions(api, (ev) => {
@@ -58,6 +77,13 @@ public class Grid : IAPI
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
                 return null;
             }
+
+            if (!PlayerCanCommunicate(block, Sandbox.Game.World.MySession.Static.LocalPlayerId))
+            {
+                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Unable to communicate with the block");
+                return null;
+            }
+
             return block;
         });
     }
@@ -361,7 +387,6 @@ public class Grid : IAPI
             if (block == null)
                 return;
             if (!(block is IMyThrust thrustBlock))
-
             {
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a thruster block");
                 return;
@@ -376,6 +401,46 @@ public class Grid : IAPI
 
             ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
         });
+
+        blockApi.RegisterRequest("GET", "gyro", (s, ev) => {
+            ev.Handled = true;
+            var block = findMethod(ev);
+            if (block == null)
+                return;
+            if (!(block is IMyGyro gyroBlock))
+            {
+                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a gyro block");
+                return;
+            }
+
+            ev.Context.Response.CloseJSON(new DataTypes.GyroBlock(gyroBlock));
+        });
+        blockApi.RegisterRequest("POST", "gyro", (s, ev) => {
+            ev.Handled = true;
+            var block = findMethod(ev);
+            if (block == null)
+                return;
+            if (!(block is IMyGyro gyroBlock))
+            {
+                ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.NotFound, "Not a gyro block");
+                return;
+            }
+
+            var settings = ev.Context.Request.ReadJSON<DataTypes.GyroBlock>();
+
+            if (settings.Override.HasValue)
+                gyroBlock.GyroOverride = settings.Override.Value;
+            if (settings.Power.HasValue)
+                gyroBlock.GyroPower = settings.Power.Value;
+            if (settings.Pitch.HasValue)
+                gyroBlock.Pitch = settings.Pitch.Value;
+            if (settings.Roll.HasValue)
+                gyroBlock.Roll = settings.Roll.Value;
+            if (settings.Yaw.HasValue)
+                gyroBlock.Yaw = settings.Yaw.Value;
+
+            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
+        });
     }
 
     void RegisterMultiBlockActions(APIRegister blockApi, Func<HTTPEventArgs, IEnumerable<IMyTerminalBlock>> findMethod)
@@ -383,11 +448,16 @@ public class Grid : IAPI
         blockApi.RegisterRequest("GET", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
+
             ev.Context.Response.CloseJSON(blocks.Select(b => new DataTypes.BlockInformation(b)));
         });
         blockApi.RegisterRequest("POST", "enabled", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
 
             var wanted = true;
             if (ev.Context.Request.TryReadObject(out string data))
@@ -408,6 +478,9 @@ public class Grid : IAPI
         blockApi.RegisterRequest("DELETE", "enabled", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
+
             foreach (var functionalBlock in blocks.Select(b => b as IMyFunctionalBlock).Where(b => b != null))
                 functionalBlock.Enabled = false;
             ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
@@ -415,6 +488,9 @@ public class Grid : IAPI
         blockApi.RegisterRequest("POST", "name", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
+
             if (!ev.Context.Request.TryReadObject(out string text))
             {
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide a new name");
@@ -427,6 +503,9 @@ public class Grid : IAPI
         blockApi.RegisterRequest("POST", "data", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
+
             if (!ev.Context.Request.TryReadObject(out string text))
             {
                 ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.BadRequest, "Need to provide new data");
@@ -439,6 +518,8 @@ public class Grid : IAPI
         blockApi.RegisterRequest("POST", "light", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
 
             var settings = ev.Context.Request.ReadJSON<DataTypes.LightBlock>();
 
@@ -465,6 +546,8 @@ public class Grid : IAPI
         blockApi.RegisterRequest("POST", "thruster", (s, ev) => {
             ev.Handled = true;
             var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
 
             var settings = ev.Context.Request.ReadJSON<DataTypes.ThrustBlock>();
 
@@ -474,6 +557,30 @@ public class Grid : IAPI
                     thrustBlock.ThrustOverride = settings.Override.Value;
                 if (settings.OverridePercentage.HasValue)
                     thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
+            }
+
+            ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
+        });
+        blockApi.RegisterRequest("POST", "gyro", (s, ev) => {
+            ev.Handled = true;
+            var blocks = findMethod(ev);
+            if (blocks == null)
+                return;
+
+            var settings = ev.Context.Request.ReadJSON<DataTypes.GyroBlock>();
+
+            foreach (var gyroBlock in blocks.Select(b => b as IMyGyro).Where(b => b != null))
+            {
+                if (settings.Override.HasValue)
+                    gyroBlock.GyroOverride = settings.Override.Value;
+                if (settings.Power.HasValue)
+                    gyroBlock.GyroPower = settings.Power.Value;
+                if (settings.Pitch.HasValue)
+                    gyroBlock.Pitch = settings.Pitch.Value;
+                if (settings.Roll.HasValue)
+                    gyroBlock.Roll = settings.Roll.Value;
+                if (settings.Yaw.HasValue)
+                    gyroBlock.Yaw = settings.Yaw.Value;
             }
 
             ev.Context.Response.CloseHttpCode(System.Net.HttpStatusCode.Accepted);
@@ -524,6 +631,33 @@ public class Grid : IAPI
     IMyTerminalBlock FindGlobalBlock(long id)
     {
         return MyEntities.GetEntityById(id) as IMyTerminalBlock;
+    }
+
+    // TODO: Optional disable
+    bool PlayerCanCommunicate(MyCubeGrid grid, long playerId)
+    {
+        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
+        if (ply == null)
+        {
+            Logger.Debug($"Player: null");
+            return true;
+        }
+
+        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
+        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
+        {
+            var antennas = grid.GetFatBlocks().Where(b => b is IMyRadioAntenna && b.IsWorking).Select(b => b as IMyRadioAntenna);
+            if (antennas.Any(ant => distance <= ant.Radius))
+                return true;
+        }
+
+        if (distance < 1000)
+            return true;
+        return false;
+    }
+    bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+    {
+        return PlayerCanCommunicate(block.CubeGrid as MyCubeGrid, playerId);
     }
 }
 

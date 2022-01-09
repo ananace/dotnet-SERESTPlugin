@@ -138,4 +138,29 @@ internal class ThrustBlock
     }
 }
 
+[DataContract]
+internal class GyroBlock
+{
+    [DataMember(Name = "power")]
+    public float? Power { get; set; }
+    [DataMember(Name = "override")]
+    public bool? Override { get; set; }
+    [DataMember(Name = "pitch")]
+    public float? Pitch { get; set; }
+    [DataMember(Name = "yaw")]
+    public float? Yaw { get; set; }
+    [DataMember(Name = "roll")]
+    public float? Roll { get; set; }
+
+    public GyroBlock() {}
+    public GyroBlock(Sandbox.ModAPI.IMyGyro block)
+    {
+        Power = block.GyroPower;
+        Override = block.GyroOverride;
+        Pitch = block.Pitch;
+        Yaw = block.Yaw;
+        Roll = block.Roll;
+    }
+}
+
 }
