@@ -9,6 +9,21 @@ using Sandbox.ModAPI;
 namespace SERESTPlugin.APIs
 {
 
+[API("/r0/grid", OnLocal = false)]
+public class GlobalGridAPI : BaseAPI
+{
+    [APIEndpoint("GET", "/")
+    public IEnumerable<DataTypes.GridInformation> GetGrids()
+    {
+        return MyEntities.GetEntities().OfType<MyCubeGrid>().Select(g => new DataTypes.GridInformation(g));
+    }
+    [APIEndpoint("POST", "/")]
+    public void TrySubmitGrid()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+}
+
 [API("/r0/grid/local", Needs = new string[] { "grid" }, OnDedicated = false)]
 public class LocalGridAPI : R0GridAPI
 {

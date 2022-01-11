@@ -49,6 +49,21 @@ public abstract class R0GridAPI : BaseAPI
     {
         return new DataTypes.GridInformation(Grid);
     }
+    [APIEndpoint("POST", "/")]
+    public void TrySubmitGrid()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("PUT", "/")]
+    public void TryUpsertGrid()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("DELETE", "/")]
+    public void TryDeleteGrid()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
 
     [APIEndpoint("GET", "/dampeners")]
     public bool GetDampeners()
@@ -56,7 +71,12 @@ public abstract class R0GridAPI : BaseAPI
         return Grid.DampenersEnabled;
     }
     [APIEndpoint("POST", "/dampeners")]
-    public void SetDampeners(bool? wanted = null)
+    public void SetDampeners(bool? wanted = true)
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
+    }
+    [APIEndpoint("DELETE", "/dampeners")]
+    public void UnsetDampeners()
     {
         throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
     }
@@ -101,6 +121,21 @@ public abstract class R0BlockAPI : BaseAPI
     public DataTypes.BlockInformation GetInformation()
     {
         return new DataTypes.BlockInformation(Block);
+    }
+    [APIEndpoint("POST", "/")]
+    public void TryExecuteBlock()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("PUT", "/")]
+    public void TryUpsertBlock()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("DELETE", "/")]
+    public void TryDeleteBlock()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/name")]
@@ -360,6 +395,22 @@ public abstract class R0MultiBlockAPI : BaseAPI
     {
         return Blocks.Select(b => new DataTypes.BlockInformation(b));
     }
+    [APIEndpoint("POST", "/")]
+    public void TryExecuteBlocks()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("PUT", "/")]
+    public void TryUpsertBlocks()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("DELETE", "/")]
+    public void TryDeleteBlocks()
+    {
+        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
     [APIEndpoint("POST", "/name")]
     public void SetName(string name)
     {

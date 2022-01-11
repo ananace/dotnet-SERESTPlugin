@@ -133,7 +133,7 @@ public class BlockInformation
         Functional = block.IsFunctional;
         Working = block.IsWorking;
 
-        // Implemented for all applicable blocks
+        // Implemented for all applicable blocks (since all accessable blocks are IMyTerminalBlock)
         Interfaces.Add("name");
         Interfaces.Add("data");
 
