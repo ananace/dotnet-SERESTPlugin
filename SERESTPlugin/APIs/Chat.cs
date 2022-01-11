@@ -10,11 +10,8 @@ namespace SERESTPlugin.APIs
 public class ChatAPI : BaseAPI
 {
     [APIEndpoint("POST", "/", NeedsBody = true)]
-    public void PostMessage()
+    public void PostMessage(string message)
     {
-        if (!Request.TryReadObject(out string message))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Need to provide a valid message");
-
         var sys = Sandbox.Game.World.MySession.Static.ChatSystem;
         if (sys.CommandSystem.CanHandle(message))
         {

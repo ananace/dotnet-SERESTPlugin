@@ -59,8 +59,7 @@ public class LocalGridAPI : R0GridAPI
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
                 throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithId(blockId) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
             return block;
         }
@@ -86,8 +85,7 @@ public class LocalGridAPI : R0GridAPI
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithName(name) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
             return block;
         }
@@ -113,7 +111,9 @@ public class LocalGridAPI : R0GridAPI
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).SearchBlocksOfName(name, blocks);
+            return blocks;
         }
     }
 
@@ -138,8 +138,32 @@ public class LocalGridAPI : R0GridAPI
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
-                (group as IMyBlockGroup).GetBlocks(blocks);
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockGroupWithName(name).GetBlocks(blocks);
+            return blocks;
+        }
+    }
+
+    [API("/blocks/all", Needs = new string[] { "grid", "blocks" }, OnDedicated = false)]
+    public class MultiBlockAPIAll : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Local player is not on a grid");
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate() { return true; }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlocks(blocks);
             return blocks;
         }
     }
@@ -197,8 +221,7 @@ public class GridByIDAPI : R0GridAPI
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
                 throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithId(blockId) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
             return block;
         }
@@ -232,8 +255,7 @@ public class GridByIDAPI : R0GridAPI
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithName(name) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
             return block;
         }
@@ -267,7 +289,9 @@ public class GridByIDAPI : R0GridAPI
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).SearchBlocksOfName(name, blocks);
+            return blocks;
         }
     }
 
@@ -300,8 +324,40 @@ public class GridByIDAPI : R0GridAPI
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
-                (group as IMyBlockGroup).GetBlocks(blocks);
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockGroupWithName(name).GetBlocks(blocks);
+            return blocks;
+        }
+    }
+
+    [API("/blocks/all", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIAll : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid grid ID specified");
+            var entity = MyEntities.GetEntityById(gridId);
+            if (entity == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified ID found");
+            if (!(entity is MyCubeGrid grid))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a grid");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlocks(blocks);
             return blocks;
         }
     }
@@ -353,8 +409,7 @@ public class GridByNameAPI : R0GridAPI
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
                 throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.EntityId == blockId);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithId(blockId) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block found with the given ID");
             return block;
         }
@@ -385,8 +440,7 @@ public class GridByNameAPI : R0GridAPI
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            var block = Grid.GetFatBlocks().OfType<IMyTerminalBlock>().FirstOrDefault(b => b.CustomName == name);
-            if (block == null)
+            if (!((Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockWithName(name) is IMyTerminalBlock block))
                 throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified name found");
             return block;
         }
@@ -417,7 +471,9 @@ public class GridByNameAPI : R0GridAPI
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
-            return Grid.GetFatBlocks().OfType<IMyTerminalBlock>().Where(b => b.CustomName == name);
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).SearchBlocksOfName(name, blocks);
+            return blocks;
         }
     }
 
@@ -447,8 +503,37 @@ public class GridByNameAPI : R0GridAPI
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-            foreach (var group in Grid.GridSystems.TerminalSystem.BlockGroups.Where(g => g.Name.ToString() == name))
-                (group as IMyBlockGroup).GetBlocks(blocks);
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlockGroupWithName(name).GetBlocks(blocks);
+            return blocks;
+        }
+    }
+
+    [API("/blocks/all", Needs = new string[] { "grid", "blocks", "canCommunicate" })]
+    public class MultiBlockAPIAll : R0MultiBlockAPI
+    {
+        [APIData("grid")]
+        public MyCubeGrid FindGrid()
+        {
+            var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
+            var grid = MyEntities.GetEntities().OfType<MyCubeGrid>().FirstOrDefault(x => x.DisplayName == name);
+            if (grid == null)
+                throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No grid with specified name found");
+
+            return grid;
+        }
+        public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
+
+        [APIData("canCommunicate")]
+        public override bool CanCommunicate()
+        {
+            return base.CanCommunicate();
+        }
+
+        [APIData("blocks")]
+        public override IEnumerable<IMyTerminalBlock> FindBlocks()
+        {
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            (Grid.GridSystems.TerminalSystem as IMyGridTerminalSystem).GetBlocks(blocks);
             return blocks;
         }
     }
@@ -470,7 +555,7 @@ public class BlockAPIByID : R0BlockAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
         var entity = MyEntities.GetEntityById(blockId);
         if (entity == null)
-            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified ID found");
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No entity with specified ID found");
         if (!(entity is IMyTerminalBlock block))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Entity with given ID is not a block");
         return block;

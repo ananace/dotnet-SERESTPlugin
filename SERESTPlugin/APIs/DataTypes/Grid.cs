@@ -50,12 +50,12 @@ public class BlockInformation
         { "beacon", typeof(Sandbox.ModAPI.IMyBeacon) },
         { "button", typeof(SpaceEngineers.Game.ModAPI.IMyButtonPanel) },
         { "camera", typeof(Sandbox.ModAPI.IMyCameraBlock) },
-        { "cargo", typeof(Sandbox.ModAPI.IMyCargoContainer) },
+        // { "cargo", typeof(Sandbox.ModAPI.IMyCargoContainer) },
         { "cockpit", typeof(Sandbox.ModAPI.IMyCockpit) },
         { "collector", typeof(Sandbox.ModAPI.IMyCollector) },
         { "connector", typeof(Sandbox.ModAPI.IMyShipConnector) },
         { "controller", typeof(Sandbox.ModAPI.IMyShipController) },
-        { "conveyor", typeof(SpaceEngineers.Game.ModAPI.IMyLargeConveyorTurretBase) }, // TODO: Implement for all UseConveyorSystem
+        // { "conveyor", typeof(SpaceEngineers.Game.ModAPI.IMyLargeConveyorTurretBase) }, // TODO: Implement for all UseConveyorSystem
         { "door", typeof(Sandbox.ModAPI.IMyDoor) },
         { "drill", typeof(Sandbox.ModAPI.IMyShipDrill) },
         { "exhaust", typeof(Sandbox.ModAPI.IMyExhaustBlock) },
@@ -134,8 +134,19 @@ public class BlockInformation
         Working = block.IsWorking;
 
         // Implemented for all applicable blocks (since all accessable blocks are IMyTerminalBlock)
-        Interfaces.Add("name");
         Interfaces.Add("data");
+        Interfaces.Add("info");
+        Interfaces.Add("name");
+        Interfaces.Add("terminal");
+
+        if (block is Sandbox.Game.Entities.MyCubeBlock fatBlock)
+        {
+            if (fatBlock.HasInventory)
+                Interfaces.Add("cargo");
+        }
+
+        if (block is Sandbox.ModAPI.IMyCollector || block is SpaceEngineers.Game.ModAPI.IMyLargeConveyorTurretBase)
+            Interfaces.Add("conveyor");
 
         foreach (var mapping in InterfaceMapping)
         {

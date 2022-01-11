@@ -157,7 +157,7 @@ public class ButtonBlock : ButtonBlockInput
     }
 
     [DataMember(Name = "buttons", EmitDefaultValue = false)]
-    public IEnumerable<ButtonInfo> Buttons { get; set; }
+    public ButtonInfo[] Buttons { get; set; }
 
     public ButtonBlock() {}
     public ButtonBlock(SpaceEngineers.Game.ModAPI.IMyButtonPanel block)
@@ -168,7 +168,124 @@ public class ButtonBlock : ButtonBlockInput
             Buttons = Enumerable.Range(0, fatBlock.BlockDefinition.ButtonCount).Select(i => new ButtonInfo {
                 Name = block.GetButtonName(i),
                 Assigned = block.IsButtonAssigned(i)
-            });
+            }).ToArray();
+    }
+}
+
+[DataContract]
+public class CameraBlock
+{
+    [DataMember(Name = "is_active")]
+    public bool Active { get; set; }
+
+    public CameraBlock() {}
+    public CameraBlock(Sandbox.ModAPI.IMyCameraBlock block)
+    {
+        Active = block.IsActive;
+    }
+}
+
+[DataContract]
+public class CargoBlock
+{
+    [DataContract]
+    public class InventoryInfo
+    {
+        [DataMember(Name = "id")]
+        public string ID { get; set; }
+        [DataMember(Name = "items")]
+        public int Items { get; set; }
+        [DataMember(Name = "max_items")]
+        public int MaxItems { get; set; }
+        [DataMember(Name = "current_volume")]
+        public float CurrentVolume { get; set; }
+        [DataMember(Name = "max_volume")]
+        public float MaxVolume { get; set; }
+        [DataMember(Name = "current_mass")]
+        public float CurrentMass { get; set; }
+        [DataMember(Name = "max_mass")]
+        public float MaxMass { get; set; }
+    }
+
+    [DataMember(Name = "inventories", EmitDefaultValue = false)]
+    public InventoryInfo[] Inventories { get; set; }
+
+    public CargoBlock() {}
+    public CargoBlock(Sandbox.Game.Entities.MyCubeBlock block)
+    {
+        Enumerable.Range(0, block.InventoryCount).Select(i => {
+            var inv = block.GetInventoryBase(i);
+            return new InventoryInfo {
+                ID = inv.InventoryId.String,
+                CurrentVolume = (float)inv.CurrentVolume,
+                MaxVolume = (float)inv.MaxVolume,
+                CurrentMass = (float)inv.CurrentMass,
+                MaxMass = (float)inv.MaxMass,
+                Items = inv.GetItemsCount(),
+                MaxItems = inv.MaxItemCount,
+            };
+        }).ToArray();
+    }
+}
+
+[DataContract]
+public class CockpitBlock
+{
+    [DataMember(Name = "oxygen_capacity")]
+    public float OxygenCapacity { get; set; }
+    [DataMember(Name = "oxygen_ratio")]
+    public float OxygenRatio { get; set; }
+
+    public CockpitBlock() {}
+    public CockpitBlock(Sandbox.ModAPI.IMyCockpit block)
+    {
+        OxygenCapacity = block.OxygenCapacity;
+        OxygenRatio = block.OxygenFilledRatio;
+    }
+}
+
+[DataContract]
+public class ConnectorBlockInput
+{
+    [DataMember(Name = "throw_out")]
+    public bool? ThrowOut { get; set; }
+    [DataMember(Name = "collect_all")]
+    public bool? CollectAll { get; set; }
+    [DataMember(Name = "pull_strength")]
+    public float? PullStrength { get; set; }
+    [DataMember(Name = "parking_enabled")]
+    public bool? IsParkingEnabled { get; set; }
+    [DataMember(Name = "trading")]
+    public bool? Trading { get; set; }
+    [DataMember(Name = "power_override")]
+    public bool? PowerOverride { get; set; }
+}
+
+[DataContract]
+public class ConnectorBlock : ConnectorBlockInput
+{
+    [DataMember(Name = "status")]
+    public string Status { get; set; }
+    [DataMember(Name = "other")]
+    public BlockInformation Other { get; set; }
+
+    public ConnectorBlock() {}
+    public ConnectorBlock(Sandbox.ModAPI.IMyShipConnector block)
+    {
+        ThrowOut = block.ThrowOut;
+        CollectAll = block.CollectAll;
+        PullStrength = block.PullStrength;
+        IsParkingEnabled = block.IsParkingEnabled;
+        Status = block.Status.ToString().ToLower();
+
+        if (block.OtherConnector != null)
+            Other = new BlockInformation(block.OtherConnector);
+
+        if (block is Sandbox.Game.Entities.Cube.MyShipConnector fatBlock)
+        {
+            Trading = fatBlock.TradingEnabled.Value;
+            PowerOverride = fatBlock.IsPowerTransferOverrideEnabled;
+        }
     }
 }
 

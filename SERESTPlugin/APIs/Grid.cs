@@ -6,6 +6,7 @@ using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using SpaceEngineers.Game.ModAPI;
+using System.Reflection;
 
 namespace SERESTPlugin.APIs
 {
@@ -51,17 +52,9 @@ public abstract class R0GridAPI : BaseAPI
         return new DataTypes.GridInformation(Grid);
     }
     [APIEndpoint("POST", "/")]
-    public void TrySubmitGrid()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("PUT", "/")]
-    public void TryUpsertGrid()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("DELETE", "/")]
-    public void TryDeleteGrid()
+    public void TryModifyGrid()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
@@ -72,14 +65,15 @@ public abstract class R0GridAPI : BaseAPI
         return Grid.DampenersEnabled;
     }
     [APIEndpoint("POST", "/dampeners")]
+    [APIEndpoint("PUT", "/dampeners")]
     public void SetDampeners(bool? wanted = true)
     {
-        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
+        Grid.EntityThrustComponent.DampenersEnabled = wanted ?? true;
     }
     [APIEndpoint("DELETE", "/dampeners")]
     public void UnsetDampeners()
     {
-        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 }
 
@@ -124,34 +118,9 @@ public abstract class R0BlockAPI : BaseAPI
         return new DataTypes.BlockInformation(Block);
     }
     [APIEndpoint("POST", "/")]
-    public void TryExecuteBlock()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("PUT", "/")]
-    public void TryUpsertBlock()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("DELETE", "/")]
-    public void TryDeleteBlock()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
-
-    [APIEndpoint("GET", "/name")]
-    public string GetName()
-    {
-        return Block.CustomName;
-    }
-    [APIEndpoint("POST", "/name")]
-    [APIEndpoint("PUT", "/name")]
-    public void SetName(string name)
-    {
-        Block.CustomName = name;
-    }
-    [APIEndpoint("DELETE", "/data")]
-    public void UnsetName()
+    public void TryModifyBlock()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
@@ -172,6 +141,37 @@ public abstract class R0BlockAPI : BaseAPI
     {
         Block.CustomData = null;
     }
+
+    [APIEndpoint("GET", "/info")]
+    public string GetInfo()
+    {
+        return Block.CustomInfo;
+    }
+    [APIEndpoint("POST", "/info")]
+    [APIEndpoint("PUT", "/info")]
+    [APIEndpoint("DELETE", "/info")]
+    public void ModifyInfo()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/name")]
+    public string GetName()
+    {
+        return Block.CustomName;
+    }
+    [APIEndpoint("POST", "/name")]
+    [APIEndpoint("PUT", "/name")]
+    public void SetName(string name)
+    {
+        Block.CustomName = name;
+    }
+    [APIEndpoint("DELETE", "/name")]
+    public void UnsetName()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
 
     [APIEndpoint("GET", "/air_vent")]
     public DataTypes.AirVentBlock GetAirVent()
@@ -194,10 +194,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/air_vent")]
     public void UnsetAirVent()
     {
-        if (!(Block is IMyAirVent airVentBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement air_vent");
-
-        airVentBlock.Depressurize = false;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/assembler")]
@@ -226,17 +223,11 @@ public abstract class R0BlockAPI : BaseAPI
             assemblerBlock.CooperativeMode = settings.Cooperative.Value;
         if (settings.Repeating.HasValue)
             assemblerBlock.Repeating = settings.Repeating.Value;
-        
     }
     [APIEndpoint("DELETE", "/assembler")]
     public void UnsetAssembler()
     {
-        if (!(Block is IMyAssembler assemblerBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement assembler");
-
-        assemblerBlock.Mode = Sandbox.ModAPI.Ingame.MyAssemblerMode.Assembly;
-        assemblerBlock.CooperativeMode = false;
-        assemblerBlock.Repeating = false;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/attachable_top")]
@@ -281,10 +272,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/battery")]
     public void UnsetBattery()
     {
-        if (!(Block is IMyBatteryBlock batteryBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
-
-        batteryBlock.ChargeMode = Sandbox.ModAPI.Ingame.ChargeMode.Auto;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/beacon")]
@@ -310,11 +298,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/beacon")]
     public void UnsetBeacon()
     {
-        if (!(Block is IMyBeacon beaconBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement beacon");
-
-        beaconBlock.HudText = null;
-        beaconBlock.Radius = 5000;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/button")]
@@ -338,10 +322,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/button")]
     public void UnsetButton()
     {
-        if (!(Block is IMyButtonPanel buttonBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
-
-        buttonBlock.AnyoneCanUse = false;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("POST", "/button/(?<button_id>[0-9]+)")]
     public void PushButton()
@@ -356,6 +337,115 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to handle the button block for pressing");
 
         fatButtonBlock.PressButton(buttonId);
+    }
+
+    [APIEndpoint("GET", "/camera")]
+    public DataTypes.CameraBlock GetCamera()
+    {
+        if (!(Block is IMyCameraBlock cameraBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement camera");
+
+        return new DataTypes.CameraBlock(cameraBlock);
+    }
+    [APIEndpoint("POST", "/camera")]
+    [APIEndpoint("PUT", "/camera")]
+    [APIEndpoint("DELETE", "/camera")]
+    public void ModifyCamera()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/cargo")]
+    public DataTypes.CargoBlock GetCargo()
+    {
+        if (!(Block is MyCubeBlock fatBlock) || !fatBlock.HasInventory)
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement cargo");
+
+
+        return new DataTypes.CargoBlock(fatBlock);
+    }
+    [APIEndpoint("POST", "/cargo")]
+    [APIEndpoint("PUT", "/cargo")]
+    [APIEndpoint("DELETE", "/cargo")]
+    public void ModifyCargo()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/cockpit")]
+    public DataTypes.CockpitBlock GetCockpit()
+    {
+        if (!(Block is IMyCockpit cockpitBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement cockpit");
+
+        return new DataTypes.CockpitBlock(cockpitBlock);
+    }
+    [APIEndpoint("POST", "/cockpit")]
+    [APIEndpoint("PUT", "/cockpit")]
+    [APIEndpoint("DELETE", "/cockpit")]
+    public void ModifyCockpit()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/connector")]
+    public DataTypes.ConnectorBlock GetConnector()
+    {
+        if (!(Block is IMyShipConnector connectorBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement connector");
+
+        return new DataTypes.ConnectorBlock(connectorBlock);
+    }
+    [APIEndpoint("POST", "/connector")]
+    [APIEndpoint("PUT", "/connector")]
+    public void SetConnector(DataTypes.ConnectorBlockInput settings)
+    {
+        if (!(Block is IMyShipConnector connectorBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement connector");
+        var fatBlock = connectorBlock as Sandbox.Game.Entities.Cube.MyShipConnector;
+
+        if (settings.CollectAll.HasValue)
+            connectorBlock.CollectAll = settings.CollectAll.Value;
+        if (settings.IsParkingEnabled.HasValue)
+            connectorBlock.IsParkingEnabled = settings.IsParkingEnabled.Value;
+        if (settings.PullStrength.HasValue)
+            connectorBlock.PullStrength = settings.PullStrength.Value;
+        if (settings.ThrowOut.HasValue)
+            connectorBlock.ThrowOut = settings.ThrowOut.Value;
+        if (settings.Trading.HasValue)
+            fatBlock.TradingEnabled_RequestChange(settings.Trading.Value);
+        if (settings.PowerOverride.HasValue)
+            fatBlock.IsPowerTransferOverrideEnabled = settings.PowerOverride.Value;
+    }
+    [APIEndpoint("DELETE", "/connector")]
+    public void UnsetConnector()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("GET", "/connector/connection")]
+    public string GetConnectorConnection()
+    {
+        if (!(Block is IMyShipConnector connectorBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement connector");
+
+        return connectorBlock.Status.ToString().ToLower();
+    }
+    [APIEndpoint("POST", "/connector/connection")]
+    [APIEndpoint("PUT", "/connector/connection")]
+    public void AttachConnectorConnection()
+    {
+        if (!(Block is IMyShipConnector connectorBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement connector");
+
+        connectorBlock.Connect();
+    }
+    [APIEndpoint("DELETE", "/connector/connection")]
+    public void DetachConnectorConnection()
+    {
+        if (!(Block is IMyShipConnector connectorBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement connector");
+
+        connectorBlock.Disconnect();
     }
 
     [APIEndpoint("GET", "/functional")]
@@ -377,10 +467,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/functional")]
     public void UnsetFunctional()
     {
-        if (!(Block is IMyFunctionalBlock functionalBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
-
-        functionalBlock.Enabled = false;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/light")]
@@ -439,16 +526,9 @@ public abstract class R0BlockAPI : BaseAPI
             gyroBlock.Yaw = settings.Yaw.Value;
     }
     [APIEndpoint("DELETE", "/gyro")]
-    public void ResetGyro()
+    public void UnsetGyro()
     {
-        if (!(Block is IMyGyro gyroBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement gyro");
-
-        gyroBlock.GyroOverride = false;
-        gyroBlock.GyroPower = 1.0f;
-        gyroBlock.Pitch = 0;
-        gyroBlock.Yaw = 0;
-        gyroBlock.Roll = 0;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/programmable")]
@@ -544,10 +624,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/thrust")]
     public void StopThrust()
     {
-        if (!(Block is IMyThrust thrustBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
-
-        thrustBlock.ThrustOverride = 0;
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 }
 
@@ -587,22 +664,14 @@ public abstract class R0MultiBlockAPI : BaseAPI
     }
 
     [APIEndpoint("GET", "/")]
-    public IEnumerable<DataTypes.BlockInformation> GetInformation()
+    public DataTypes.BlockInformation[] GetInformation()
     {
-        return Blocks.Select(b => new DataTypes.BlockInformation(b));
+        return Blocks.Select(b => new DataTypes.BlockInformation(b)).ToArray();
     }
     [APIEndpoint("POST", "/")]
-    public void TryExecuteBlocks()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("PUT", "/")]
-    public void TryUpsertBlocks()
-    {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
-    }
     [APIEndpoint("DELETE", "/")]
-    public void TryDeleteBlocks()
+    public void TryModifyBlocks()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
@@ -632,7 +701,7 @@ public abstract class R0MultiBlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/functional")]
     public void UnsetFunctional()
     {
-        Blocks.OfType<IMyFunctionalBlock>().ForEach(b => b.Enabled = false);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("POST", "/text")]
@@ -682,7 +751,7 @@ public abstract class R0MultiBlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/thrust")]
     public void StopThrust()
     {
-        Blocks.OfType<IMyThrust>().ForEach(b => b.ThrustOverride = 0);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("POST", "/gyro")]
@@ -705,14 +774,7 @@ public abstract class R0MultiBlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/gyro")]
     public void ResetGyro()
     {
-        foreach (var gyroBlock in Blocks.OfType<IMyGyro>())
-        {
-            gyroBlock.GyroOverride = false;
-            gyroBlock.GyroPower = 1.0f;
-            gyroBlock.Pitch = 0;
-            gyroBlock.Yaw = 0;
-            gyroBlock.Roll = 0;
-        }
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("POST", "/programmable/recompile")]
