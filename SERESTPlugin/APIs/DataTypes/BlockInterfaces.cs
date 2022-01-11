@@ -1,0 +1,295 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+
+namespace SERESTPlugin.APIs.DataTypes
+{
+
+[DataContract]
+public class AirVentBlockInput
+{
+    [DataMember(Name = "depressurize")]
+    public bool? Depressurize { get; set; }
+}
+
+[DataContract]
+public class AirVentBlock : AirVentBlockInput
+{
+    [DataMember(Name = "can_pressurize")]
+    public bool CanPressurize { get; set; }
+    [DataMember(Name = "status")]
+    public string Status { get; set; }
+    [DataMember(Name = "pressurization_enabled")]
+    public bool PressurizationEnabled { get; set; }
+    [DataMember(Name = "room_oxygen_level")]
+    public float RoomOxygenLevel { get; set; }
+    [DataMember(Name = "gas_input_rate")]
+    public float GasInput { get; set; }
+    [DataMember(Name = "gas_output_rate")]
+    public float GasOutput { get; set; }
+
+    public AirVentBlock() {}
+    public AirVentBlock(SpaceEngineers.Game.ModAPI.IMyAirVent block)
+    {
+        CanPressurize = block.CanPressurize;
+        Depressurize = block.Depressurize;
+        Status = block.Status.ToString().ToLower();
+        PressurizationEnabled = block.PressurizationEnabled;
+        RoomOxygenLevel = block.GetOxygenLevel();
+        GasInput = block.GasInputPerSecond;
+        GasOutput = block.GasOutputPerSecond;
+    }
+}
+
+[DataContract]
+public class AssemblerBlockInput
+{
+    [DataMember(Name = "mode")]
+    public string Mode { get; set; }
+    [DataMember(Name = "cooperative")]
+    public bool? Cooperative { get; set; }
+    [DataMember(Name = "repeating")]
+    public bool? Repeating { get; set; }
+}
+
+[DataContract]
+public class AssemblerBlock : AssemblerBlockInput
+{
+    [DataMember(Name = "progress")]
+    public float Progress { get; set; }
+
+    public AssemblerBlock() {}
+    public AssemblerBlock(Sandbox.ModAPI.IMyAssembler block)
+    {
+        Progress = block.CurrentProgress;
+        Mode = block.Mode.ToString().ToLower();
+        Cooperative = block.CooperativeMode;
+        Repeating = block.Repeating;
+    }
+}
+
+[DataContract]
+public class AttachableTopBlock
+{
+    [DataMember(Name = "attached")]
+    public bool Attached { get; set; }
+    [DataMember(Name = "base", EmitDefaultValue = false)]
+    public BlockInformation Base { get; set; }
+
+    public AttachableTopBlock() {}
+    public AttachableTopBlock(Sandbox.ModAPI.IMyAttachableTopBlock block)
+    {
+        Attached = block.IsAttached;
+        if (block.Base != null)
+            Base = new BlockInformation(block.Base);
+    }
+}
+
+[DataContract]
+public class BatteryBlockInput
+{
+    [DataMember(Name = "charge_mode")]
+    public string ChargeMode { get; set; }
+}
+
+[DataContract]
+public class BatteryBlock : BatteryBlockInput
+{
+    [DataMember(Name = "current_input")]
+    public float CurrentInput { get; set; }
+    [DataMember(Name = "max_input")]
+    public float MaxInput { get; set; }
+    [DataMember(Name = "current_stored")]
+    public float CurrentStored { get; set; }
+    [DataMember(Name = "max_stored")]
+    public float MaxStored { get; set; }
+    [DataMember(Name = "has_capacity_remaining")]
+    public bool CapacityRemaining { get; set; }
+    [DataMember(Name = "is_charging")]
+    public bool Charging { get; set; }
+
+    public BatteryBlock() {}
+    public BatteryBlock(Sandbox.ModAPI.IMyBatteryBlock block)
+    {
+        ChargeMode = block.ChargeMode.ToString().ToLower();
+        CurrentInput = block.CurrentInput;
+        MaxInput = block.MaxInput;
+        CurrentStored = block.CurrentStoredPower;
+        MaxStored = block.MaxStoredPower;
+        CapacityRemaining = block.HasCapacityRemaining;
+        Charging = block.IsCharging;
+    }
+}
+
+[DataContract]
+public class BeaconBlock
+{
+    [DataMember(Name = "radius")]
+    public float? Radius { get; set; }
+    [DataMember(Name = "hud_text")]
+    public string HudText { get; set; }
+
+    public BeaconBlock() {}
+    public BeaconBlock(Sandbox.ModAPI.IMyBeacon block)
+    {
+        Radius = block.Radius;
+        HudText = block.HudText;
+    }
+}
+
+[DataContract]
+public class ButtonBlockInput
+{
+    [DataMember(Name = "anyone_can_use")]
+    public bool? AnyoneCanUse { get; set; }
+}
+
+[DataContract]
+public class ButtonBlock : ButtonBlockInput
+{
+    [DataContract]
+    public class ButtonInfo
+    {
+        [DataMember(Name = "name", EmitDefaultValue = false)]
+        public string Name { get; set; }
+        [DataMember(Name = "is_assigned")]
+        public bool Assigned { get; set; }
+    }
+
+    [DataMember(Name = "buttons", EmitDefaultValue = false)]
+    public IEnumerable<ButtonInfo> Buttons { get; set; }
+
+    public ButtonBlock() {}
+    public ButtonBlock(SpaceEngineers.Game.ModAPI.IMyButtonPanel block)
+    {
+        AnyoneCanUse = block.AnyoneCanUse;
+
+        if (block is SpaceEngineers.Game.Entities.Blocks.MyButtonPanel fatBlock)
+            Buttons = Enumerable.Range(0, fatBlock.BlockDefinition.ButtonCount).Select(i => new ButtonInfo {
+                Name = block.GetButtonName(i),
+                Assigned = block.IsButtonAssigned(i)
+            });
+    }
+}
+
+[DataContract]
+public class GyroBlock
+{
+    [DataMember(Name = "power")]
+    public float? Power { get; set; }
+    [DataMember(Name = "override")]
+    public bool? Override { get; set; }
+    [DataMember(Name = "pitch")]
+    public float? Pitch { get; set; }
+    [DataMember(Name = "yaw")]
+    public float? Yaw { get; set; }
+    [DataMember(Name = "roll")]
+    public float? Roll { get; set; }
+
+    public GyroBlock() {}
+    public GyroBlock(Sandbox.ModAPI.IMyGyro block)
+    {
+        Power = block.GyroPower;
+        Override = block.GyroOverride;
+        Pitch = block.Pitch;
+        Yaw = block.Yaw;
+        Roll = block.Roll;
+    }
+}
+
+[DataContract]
+public class LightBlock
+{
+    [DataMember(Name = "color")]
+    public Color Color { get; set; }
+    [DataMember(Name = "radius")]
+    public float? Radius { get; set; }
+    [DataMember(Name = "intensity")]
+    public float? Intensity { get; set; }
+    [DataMember(Name = "falloff")]
+    public float? Falloff { get; set; }
+    [DataMember(Name = "blink_interval_seconds")]
+    public float? BlinkIntervalSeconds { get; set; }
+    [DataMember(Name = "blink_length")]
+    public float? BlinkLength { get; set; }
+    [DataMember(Name = "blink_offset")]
+    public float? BlinkOffset { get; set; }
+
+    public LightBlock() {}
+    public LightBlock(Sandbox.ModAPI.IMyLightingBlock block)
+    {
+        Color = new Color(block.Color);
+        Radius = block.Radius;
+        Intensity = block.Intensity;
+        Falloff = block.Falloff;
+        BlinkIntervalSeconds = block.BlinkIntervalSeconds;
+        BlinkLength = block.BlinkLength;
+        BlinkOffset = block.BlinkOffset;
+    }
+}
+
+[DataContract]
+public class ThrustBlockInput
+{
+    [DataMember(Name = "current_thrust")]
+    public float? Thrust { get; set; }
+    [DataMember(Name = "max_thrust")]
+    public float? MaxThrust { get; set; }
+    [DataMember(Name = "override")]
+    public float? Override { get; set; }
+    [DataMember(Name = "override_perc")]
+    public float? OverridePercentage { get; set; }
+}
+
+[DataContract]
+public class ThrustBlock : ThrustBlockInput
+{
+    [DataMember(Name = "direction")]
+    public string Direction { get; set; }
+    [DataMember(Name = "max_effective_thrust")]
+    public float MaxEffectiveThrust { get; set; }
+
+    public ThrustBlock() {}
+    public ThrustBlock(Sandbox.ModAPI.IMyThrust block)
+    {
+        if (block.GridThrustDirection == VRageMath.Vector3I.Forward)
+            Direction = "forward";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Right)
+            Direction = "right";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Backward)
+            Direction = "backward";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Left)
+            Direction = "left";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Up)
+            Direction = "up";
+        else if (block.GridThrustDirection == VRageMath.Vector3I.Down)
+            Direction = "down";
+
+        Override = block.ThrustOverride;
+        OverridePercentage = block.ThrustOverridePercentage;
+        Thrust = block.CurrentThrust;
+        MaxThrust = block.MaxThrust;
+        MaxEffectiveThrust = block.MaxEffectiveThrust;
+    }
+}
+
+[DataContract]
+public class ProgrammableBlock
+{
+    [DataMember(Name = "running")]
+    public bool Running { get; set; }
+    [DataMember(Name = "compile_errors")]
+    public bool HasErrors { get; set; }
+    [DataMember(Name = "default_argument", EmitDefaultValue = false)]
+    public string DefaultArgument { get; set; }
+
+    public ProgrammableBlock() {}
+    public ProgrammableBlock(Sandbox.ModAPI.IMyProgrammableBlock block)
+    {
+        Running = block.IsRunning;
+        HasErrors = block.HasCompileErrors;
+        DefaultArgument = block.TerminalRunArgument;
+    }
+}
+
+}

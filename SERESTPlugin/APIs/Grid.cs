@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using SpaceEngineers.Game.ModAPI;
 
 namespace SERESTPlugin.APIs
 {
@@ -144,9 +145,15 @@ public abstract class R0BlockAPI : BaseAPI
         return Block.CustomName;
     }
     [APIEndpoint("POST", "/name")]
+    [APIEndpoint("PUT", "/name")]
     public void SetName(string name)
     {
         Block.CustomName = name;
+    }
+    [APIEndpoint("DELETE", "/data")]
+    public void UnsetName()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/data")]
@@ -155,6 +162,7 @@ public abstract class R0BlockAPI : BaseAPI
         return Block.CustomData;
     }
     [APIEndpoint("POST", "/data")]
+    [APIEndpoint("PUT", "/data")]
     public void SetData(string data)
     {
         Block.CustomData = data;
@@ -165,6 +173,167 @@ public abstract class R0BlockAPI : BaseAPI
         Block.CustomData = null;
     }
 
+    [APIEndpoint("GET", "/air_vent")]
+    public DataTypes.AirVentBlock GetAirVent()
+    {
+        if (!(Block is IMyAirVent airVentBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement air_vent");
+
+        return new DataTypes.AirVentBlock(airVentBlock);
+    }
+    [APIEndpoint("POST", "/air_vent")]
+    [APIEndpoint("PUT", "/air_vent")]
+    public void SetAirVent(DataTypes.AirVentBlockInput settings)
+    {
+        if (!(Block is IMyAirVent airVentBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement air_vent");
+
+        if (settings.Depressurize.HasValue)
+            airVentBlock.Depressurize = settings.Depressurize.Value;
+    }
+    [APIEndpoint("DELETE", "/air_vent")]
+    public void UnsetAirVent()
+    {
+        if (!(Block is IMyAirVent airVentBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement air_vent");
+
+        airVentBlock.Depressurize = false;
+    }
+
+    [APIEndpoint("GET", "/assembler")]
+    public DataTypes.AssemblerBlock GetAssembler()
+    {
+        if (!(Block is IMyAssembler assemblerBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement assembler");
+
+        return new DataTypes.AssemblerBlock(assemblerBlock);
+    }
+    [APIEndpoint("POST", "/assembler")]
+    [APIEndpoint("PUT", "/assembler")]
+    public void SetAssembler(DataTypes.AssemblerBlockInput settings)
+    {
+        if (!(Block is IMyAssembler assemblerBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement assembler");
+
+        if (!string.IsNullOrEmpty(settings.Mode))
+            assemblerBlock.Mode = (Sandbox.ModAPI.Ingame.MyAssemblerMode)Enum.Parse(typeof(Sandbox.ModAPI.Ingame.MyAssemblerMode), settings.Mode, true);
+        if (settings.Cooperative.HasValue)
+            assemblerBlock.CooperativeMode = settings.Cooperative.Value;
+        if (settings.Repeating.HasValue)
+            assemblerBlock.Repeating = settings.Repeating.Value;
+        
+    }
+    [APIEndpoint("DELETE", "/assembler")]
+    public void UnsetAssembler()
+    {
+        if (!(Block is IMyAssembler assemblerBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement assembler");
+
+        assemblerBlock.Mode = Sandbox.ModAPI.Ingame.MyAssemblerMode.Assembly;
+        assemblerBlock.CooperativeMode = false;
+        assemblerBlock.Repeating = false;
+    }
+
+    [APIEndpoint("GET", "/attachable_top")]
+    public DataTypes.AttachableTopBlock GetAttachableTop()
+    {
+        if (!(Block is IMyAttachableTopBlock attachableTopBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement attachable_top");
+
+        return new DataTypes.AttachableTopBlock(attachableTopBlock);
+    }
+    [APIEndpoint("POST", "/attachable_top")]
+    [APIEndpoint("PUT", "/attachable_top")]
+    [APIEndpoint("DELETE", "/attachable_top")]
+    public void ModifyAttachableTop()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/battery")]
+    public DataTypes.BatteryBlock GetBattery()
+    {
+        if (!(Block is IMyBatteryBlock batteryBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
+
+        return new DataTypes.BatteryBlock(batteryBlock);
+    }
+    [APIEndpoint("POST", "/battery")]
+    [APIEndpoint("PUT", "/battery")]
+    public void SetBattery(DataTypes.BatteryBlockInput settings)
+    {
+        if (!(Block is IMyBatteryBlock batteryBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
+
+        if (!string.IsNullOrEmpty(settings.ChargeMode))
+            batteryBlock.ChargeMode = (Sandbox.ModAPI.Ingame.ChargeMode)Enum.Parse(typeof(Sandbox.ModAPI.Ingame.ChargeMode), settings.ChargeMode, true);
+    }
+    [APIEndpoint("DELETE", "/battery")]
+    public void UnsetBattery()
+    {
+        if (!(Block is IMyBatteryBlock batteryBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
+
+        batteryBlock.ChargeMode = Sandbox.ModAPI.Ingame.ChargeMode.Auto;
+    }
+
+    [APIEndpoint("GET", "/beacon")]
+    public DataTypes.BeaconBlock GetBeacon()
+    {
+        if (!(Block is IMyBeacon beaconBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement beacon");
+
+        return new DataTypes.BeaconBlock(beaconBlock);
+    }
+    [APIEndpoint("POST", "/beacon")]
+    [APIEndpoint("PUT", "/beacon")]
+    public void SetBeacon(DataTypes.BeaconBlock settings)
+    {
+        if (!(Block is IMyBeacon beaconBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement beacon");
+
+        if (!string.IsNullOrEmpty(settings.HudText))
+            beaconBlock.HudText = settings.HudText;
+        if (settings.Radius.HasValue)
+            beaconBlock.Radius = settings.Radius.Value;
+    }
+    [APIEndpoint("DELETE", "/beacon")]
+    public void UnsetBeacon()
+    {
+        if (!(Block is IMyBeacon beaconBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement beacon");
+
+        beaconBlock.HudText = null;
+        beaconBlock.Radius = 5000;
+    }
+
+    [APIEndpoint("GET", "/button")]
+    public DataTypes.ButtonBlock GetButton()
+    {
+        if (!(Block is IMyButtonPanel buttonBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
+
+        return new DataTypes.ButtonBlock(buttonBlock);
+    }
+    [APIEndpoint("POST", "/button")]
+    [APIEndpoint("PUT", "/button")]
+    public void SetButton(DataTypes.ButtonBlockInput settings)
+    {
+        if (!(Block is IMyButtonPanel buttonBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
+        
+        if (settings.AnyoneCanUse.HasValue)
+            buttonBlock.AnyoneCanUse = settings.AnyoneCanUse.Value;
+    }
+    [APIEndpoint("DELETE", "/button")]
+    public void UnsetButton()
+    {
+        if (!(Block is IMyButtonPanel buttonBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
+
+        buttonBlock.AnyoneCanUse = false;
+    }
+
     [APIEndpoint("GET", "/functional")]
     public bool GetFunctional()
     {
@@ -173,6 +342,7 @@ public abstract class R0BlockAPI : BaseAPI
         return functionalBlock.Enabled;
     }
     [APIEndpoint("POST", "/functional")]
+    [APIEndpoint("PUT", "/functional")]
     public void SetFunctional(bool wanted = true)
     {
         if (!(Block is IMyFunctionalBlock functionalBlock))
@@ -187,31 +357,6 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
 
         functionalBlock.Enabled = false;
-    }
-
-    [APIEndpoint("GET", "/text")]
-    public string GetText()
-    {
-        if (!(Block is IMyTextSurface textBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
-
-        return textBlock.GetText();
-    }
-    [APIEndpoint("POST", "/text")]
-    public void SetText(string text)
-    {
-        if (!(Block is IMyTextSurface textBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
-
-        textBlock.WriteText(text);
-    }
-    [APIEndpoint("DELETE", "/text")]
-    public void RemoveText()
-    {
-        if (!(Block is IMyTextSurface textBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
-
-        textBlock.WriteText("");
     }
 
     [APIEndpoint("GET", "/light")]
@@ -242,34 +387,6 @@ public abstract class R0BlockAPI : BaseAPI
             lightBlock.Intensity = settings.Intensity.Value;
         if (settings.Radius.HasValue)
             lightBlock.Radius = settings.Radius.Value;
-    }
-
-    [APIEndpoint("GET", "/thrust")]
-    public DataTypes.ThrustBlock GetThrust()
-    {
-        if (!(Block is IMyThrust thrustBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
-
-        return new DataTypes.ThrustBlock(thrustBlock);
-    }
-    [APIEndpoint("POST", "/thrust")]
-    public void SetThrust(DataTypes.ThrustBlock settings)
-    {
-        if (!(Block is IMyThrust thrustBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
-
-        if (settings.Override.HasValue)
-            thrustBlock.ThrustOverride = settings.Override.Value;
-        if (settings.OverridePercentage.HasValue)
-            thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
-    }
-    [APIEndpoint("DELETE", "/thrust")]
-    public void StopThrust()
-    {
-        if (!(Block is IMyThrust thrustBlock))
-            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
-
-        thrustBlock.ThrustOverride = 0;
     }
 
     [APIEndpoint("GET", "/gyro")]
@@ -352,6 +469,61 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
         programmableBlock.ProgramData = text;
+    }
+
+    [APIEndpoint("GET", "/text")]
+    public string GetText()
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+
+        return textBlock.GetText();
+    }
+    [APIEndpoint("POST", "/text")]
+    [APIEndpoint("PUT", "/text")]
+    public void SetText(string text)
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+
+        textBlock.WriteText(text);
+    }
+    [APIEndpoint("DELETE", "/text")]
+    public void RemoveText()
+    {
+        if (!(Block is IMyTextSurface textBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement text");
+
+        textBlock.WriteText("");
+    }
+
+    [APIEndpoint("GET", "/thrust")]
+    public DataTypes.ThrustBlock GetThrust()
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
+
+        return new DataTypes.ThrustBlock(thrustBlock);
+    }
+    [APIEndpoint("POST", "/thrust")]
+    [APIEndpoint("PUT", "/thrust")]
+    public void SetThrust(DataTypes.ThrustBlockInput settings)
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
+
+        if (settings.Override.HasValue)
+            thrustBlock.ThrustOverride = settings.Override.Value;
+        if (settings.OverridePercentage.HasValue)
+            thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
+    }
+    [APIEndpoint("DELETE", "/thrust")]
+    public void StopThrust()
+    {
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
+
+        thrustBlock.ThrustOverride = 0;
     }
 }
 
