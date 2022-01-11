@@ -216,7 +216,12 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement assembler");
 
         if (!string.IsNullOrEmpty(settings.Mode))
-            assemblerBlock.Mode = (Sandbox.ModAPI.Ingame.MyAssemblerMode)Enum.Parse(typeof(Sandbox.ModAPI.Ingame.MyAssemblerMode), settings.Mode, true);
+        {
+            if (!Enum.TryParse(settings.Mode, true, out Sandbox.ModAPI.Ingame.MyAssemblerMode mode))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Not a valid assembler mode");
+
+            assemblerBlock.Mode = mode;
+        }
         if (settings.Cooperative.HasValue)
             assemblerBlock.CooperativeMode = settings.Cooperative.Value;
         if (settings.Repeating.HasValue)
@@ -266,7 +271,12 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
 
         if (!string.IsNullOrEmpty(settings.ChargeMode))
-            batteryBlock.ChargeMode = (Sandbox.ModAPI.Ingame.ChargeMode)Enum.Parse(typeof(Sandbox.ModAPI.Ingame.ChargeMode), settings.ChargeMode, true);
+        {
+            if (!Enum.TryParse(settings.ChargeMode, true, out Sandbox.ModAPI.Ingame.ChargeMode mode))
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement battery");
+
+            batteryBlock.ChargeMode = mode;
+        }
     }
     [APIEndpoint("DELETE", "/battery")]
     public void UnsetBattery()
@@ -332,6 +342,20 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
 
         buttonBlock.AnyoneCanUse = false;
+    }
+    [APIEndpoint("POST", "/button/(?<button_id>[0-9]+)")]
+    public void PushButton()
+    {
+        if (!int.TryParse(EventArgs.Components["button_id"], out int buttonId))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid button id specified");
+
+        if (!(Block is IMyButtonPanel))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
+
+        if (!(Block is SpaceEngineers.Game.Entities.Blocks.MyButtonPanel fatButtonBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to handle the button block for pressing");
+
+        fatButtonBlock.PressButton(buttonId);
     }
 
     [APIEndpoint("GET", "/functional")]

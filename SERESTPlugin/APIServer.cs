@@ -315,6 +315,10 @@ public class APIServer : IDisposable
             if (!eventArgs.Handled)
                 context.Response.CloseHttpCode(HttpStatusCode.NotFound, "No endpoint chose to handle the request");
         }
+        catch (HTTPException ex)
+        {
+            context.Response.CloseHttpCode(ex.Code, ex.Message);
+        }
         catch (Exception ex)
         {
             Logger.Error($"APIServer: {ex.GetType().Name}; {ex.Message}\n{ex.StackTrace}");
