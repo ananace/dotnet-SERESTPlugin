@@ -29,9 +29,12 @@
     <Reference Include="Sandbox.Graphics">    
       <HintPath>..\Bin64\Sandbox.Graphics.dll</HintPath>    
     </Reference>    
+    <Reference Include="SpaceEngineers.Game">
+      <HintPath>..\Bin64\SpaceEngineers.Game.dll</HintPath>
+    </Reference>
     <Reference Include="SpaceEngineers.ObjectBuilders">    
       <HintPath>..\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>    
-    </Reference>    
+    </Reference>
     <Reference Include="VRage">    
       <HintPath>..\Bin64\VRage.dll</HintPath>    
     </Reference>    

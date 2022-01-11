@@ -12,7 +12,7 @@ namespace SERESTPlugin.APIs
 [API("/r0/grid", OnLocal = false)]
 public class GlobalGridAPI : BaseAPI
 {
-    [APIEndpoint("GET", "/")
+    [APIEndpoint("GET", "/")]
     public IEnumerable<DataTypes.GridInformation> GetGrids()
     {
         return MyEntities.GetEntities().OfType<MyCubeGrid>().Select(g => new DataTypes.GridInformation(g));
@@ -20,7 +20,7 @@ public class GlobalGridAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     public void TrySubmitGrid()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 }
 
@@ -468,7 +468,7 @@ public class BlockAPIByID : R0BlockAPI
     {
         if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Invalid block ID specified");
-        var entity = MyEntities.GetEntityById(gridId);
+        var entity = MyEntities.GetEntityById(blockId);
         if (entity == null)
             throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No block with specified ID found");
         if (!(entity is IMyTerminalBlock block))

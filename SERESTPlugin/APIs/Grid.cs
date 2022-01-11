@@ -52,17 +52,17 @@ public abstract class R0GridAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     public void TrySubmitGrid()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("PUT", "/")]
     public void TryUpsertGrid()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("DELETE", "/")]
     public void TryDeleteGrid()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/dampeners")]
@@ -125,17 +125,17 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     public void TryExecuteBlock()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("PUT", "/")]
     public void TryUpsertBlock()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("DELETE", "/")]
     public void TryDeleteBlock()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/name")]
@@ -398,17 +398,17 @@ public abstract class R0MultiBlockAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     public void TryExecuteBlocks()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("PUT", "/")]
     public void TryUpsertBlocks()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
     [APIEndpoint("DELETE", "/")]
     public void TryDeleteBlocks()
     {
-        throw HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("POST", "/name")]
