@@ -3,7 +3,7 @@ using VRage.Game.Components;
 namespace SERESTPlugin
 {
 
-[MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
+[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 class APIServerComponent : MySessionComponentBase
 {
     APIServer server = null;
@@ -25,13 +25,6 @@ class APIServerComponent : MySessionComponentBase
     {
         Util.Logger.Info("APServerComponent.UnloadData()");
         server.Stop();
-    }
-
-    int tick = 0;
-    public override void UpdateAfterSimulation()
-    {
-        if (server != null && tick++ % 10 == 0)
-            server.Tick();
     }
 }
 

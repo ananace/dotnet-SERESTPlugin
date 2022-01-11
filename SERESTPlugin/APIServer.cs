@@ -16,7 +16,6 @@ namespace SERESTPlugin
 public class APIServer : IDisposable
 {
     HttpListener _listen;
-    Queue<HttpListenerContext> _waiting = new Queue<HttpListenerContext>();
 
     public static IList<IAPI> ManualAPIs { get; private set; } = new List<IAPI> { };
 
@@ -71,10 +70,10 @@ public class APIServer : IDisposable
             var apiAttribs = api.GetCustomAttributes<APIAttribute>();
             foreach (var apiAttrib in apiAttribs)
             {
-                // if (Sandbox.Game.World.MySession.Static.IsServer && !apiAttrib.OnDedicated)
-                //     continue;
-                // if (!Sandbox.Game.World.MySession.Static.IsServer && !apiAttrib.OnLocal)
-                //     continue;
+                if (Sandbox.ModAPI.MyAPIGateway.Utilities.IsDedicated && !apiAttrib.OnDedicated)
+                    continue;
+                if (!Sandbox.ModAPI.MyAPIGateway.Utilities.IsDedicated && !apiAttrib.OnLocal)
+                    continue;
 
                 foreach (var endpoint in api.GetMethods().Where(m => m.HasAttribute<APIEndpointAttribute>()))
                 {
@@ -92,39 +91,15 @@ public class APIServer : IDisposable
         }
 
         _listen.Start();
-
-        _waiting.Clear();
-        _listen.BeginGetContext(OnContextReceived, _listen);
-
         Logger.Info($"APIServer: Now listening on {string.Join(", ",_listen.Prefixes.ToArray())}, with {Callbacks.Count} callbacks registered.");
+
+        _listen.BeginGetContext(OnContextReceived, _listen);
     }
 
     public void Stop()
     {
-        _waiting.Clear();
-
         _listen?.Stop();
         _listen = null;
-    }
-
-    public void Tick()
-    {
-        if (!IsListening)
-            return;
-
-        lock(_waiting)
-        {
-            var start = DateTime.Now;
-            do
-            {
-                if (_waiting.Count == 0)
-                    break;
-
-                var ctx = _waiting.Dequeue();
-                HandleRequest(ctx);
-            }
-            while (DateTime.Now - start < TimeSpan.FromMilliseconds(5));
-        }
     }
 
     public APIRegister RegisterAPI(string path)
@@ -157,8 +132,9 @@ public class APIServer : IDisposable
 
         var ctx = _listen.EndGetContext(result);
 
-        lock(_waiting)
-            _waiting.Enqueue(ctx);
+        Sandbox.ModAPI.MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+            HandleRequest(ctx);
+        }, "SERESTPlugin.APIServer");
 
         _listen.BeginGetContext(OnContextReceived, _listen);
     }
