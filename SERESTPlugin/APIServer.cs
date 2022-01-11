@@ -130,13 +130,20 @@ public class APIServer : IDisposable
         if (!IsListening)
             return;
 
-        var ctx = _listen.EndGetContext(result);
+        try
+        {
+            var ctx = _listen.EndGetContext(result);
 
-        Sandbox.ModAPI.MyAPIGateway.Utilities.InvokeOnGameThread(() => {
-            HandleRequest(ctx);
-        }, "SERESTPlugin.APIServer");
+            Sandbox.ModAPI.MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                HandleRequest(ctx);
+            }, "SERESTPlugin.APIServer");
 
-        _listen.BeginGetContext(OnContextReceived, _listen);
+            _listen.BeginGetContext(OnContextReceived, _listen);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"APIServer: {ex.GetType().Name} in async context loop: {ex.Message}. APIServer now no longer accessable.");
+        }
     }
 
     void HandleBaseAPIRequest(Type api, APIAttribute apiAttrib, MethodInfo endpoint, APIEndpointAttribute endpointAttrib, HTTPEventArgs ev)
