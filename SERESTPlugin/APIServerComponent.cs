@@ -3,7 +3,7 @@ using VRage.Game.Components;
 namespace SERESTPlugin
 {
 
-[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
+[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate, 9001)]
 class APIServerComponent : MySessionComponentBase
 {
     APIServer server = null;
@@ -11,9 +11,13 @@ class APIServerComponent : MySessionComponentBase
     public override void Init(VRage.Game.MyObjectBuilder_SessionComponent sessionComponent)
     {
         Util.Logger.Info("APIServerComponent.Init()");
+        if (Sandbox.ModAPI.MyAPIGateway.Session.IsServer)
+        {
+            Util.Logger.Info("IsServer");
 
-        server = new APIServer();
-        server.Start();
+            server = new APIServer();
+            server.Start();
+        }
     }
 
     public override void LoadData()
@@ -24,7 +28,8 @@ class APIServerComponent : MySessionComponentBase
     protected override void UnloadData()
     {
         Util.Logger.Info("APServerComponent.UnloadData()");
-        server.Stop();
+        if (Sandbox.ModAPI.MyAPIGateway.Session.IsServer)
+            server.Stop();
     }
 }
 
