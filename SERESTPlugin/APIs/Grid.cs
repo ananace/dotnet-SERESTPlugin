@@ -629,22 +629,49 @@ public abstract class R0BlockAPI : BaseAPI
         connectorBlock.Disconnect();
     }
 
+    [APIEndpoint("GET", "/conveyor")]
+    public DataTypes.ConveyorBlock GetConveyor()
+    {
+        if (Block.GetProperty("UseConveyorSystem") == null)
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement conveyor");
+
+        return new DataTypes.ConveyorBlock(Block);
+    }
+    [APIEndpoint("POST", "/conveyor")]
+    [APIEndpoint("PUT", "/conveyor")]
+    public void SetConveyor(DataTypes.ConveyorBlock settings)
+    {
+        var prop = Block.GetProperty("UseConveyorSystem");
+        if (prop == null)
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement conveyor");
+        
+        if (settings.UseConveyorSystem.HasValue)
+            prop.AsBool().SetValue(Block, settings.UseConveyorSystem.Value);
+    }
+    [APIEndpoint("DELETE", "/conveyor")]
+    public void UnsetConveyor()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+
     [APIEndpoint("GET", "/functional")]
-    public bool GetFunctional()
+    public DataTypes.FunctionalBlock GetFunctional()
     {
         if (!(Block is IMyFunctionalBlock functionalBlock))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
 
-        return functionalBlock.Enabled;
+        return new DataTypes.FunctionalBlock(functionalBlock);
     }
     [APIEndpoint("POST", "/functional")]
     [APIEndpoint("PUT", "/functional")]
-    public void SetFunctional(bool wanted = true)
+    public void SetFunctional(DataTypes.FunctionalBlock settings)
     {
         if (!(Block is IMyFunctionalBlock functionalBlock))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
 
-        functionalBlock.Enabled = wanted;
+        if (settings.Enabled.HasValue)
+            functionalBlock.Enabled = settings.Enabled.Value;
     }
     [APIEndpoint("DELETE", "/functional")]
     public void UnsetFunctional()
@@ -755,6 +782,30 @@ public abstract class R0BlockAPI : BaseAPI
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement programmable");
 
         programmableBlock.ProgramData = text;
+    }
+
+    [APIEndpoint("GET", "/terminal")]
+    public DataTypes.TerminalBlock GetTerminal()
+    {
+        return new DataTypes.TerminalBlock(Block);
+    }
+    [APIEndpoint("POST", "/terminal")]
+    [APIEndpoint("PUT", "/terminal")]
+    public void SetTerminal(DataTypes.TerminalBlock settings)
+    {
+        if (settings.ShowInInventory.HasValue)
+            Block.ShowInInventory = settings.ShowInInventory.Value;
+        if (settings.ShowInTerminal.HasValue)
+            Block.ShowInTerminal = settings.ShowInTerminal.Value;
+        if (settings.ShowInToolbarConfig.HasValue)
+            Block.ShowInToolbarConfig = settings.ShowInToolbarConfig.Value;
+        if (settings.ShowOnHUD.HasValue)
+            Block.ShowOnHUD = settings.ShowOnHUD.Value;
+    }
+    [APIEndpoint("DELETE", "/terminal")]
+    public void UnsetTerminal()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     [APIEndpoint("GET", "/text")]

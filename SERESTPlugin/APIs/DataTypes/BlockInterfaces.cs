@@ -328,6 +328,55 @@ public class ControllerBlock : ControllerBlockInput
     }
 }
 
+[DataContract]
+public class ConveyorBlock
+{
+    [DataMember(Name = "use_conveyor_system")]
+    public bool? UseConveyorSystem { get; set; }
+
+    public ConveyorBlock() {}
+    public ConveyorBlock(Sandbox.ModAPI.IMyTerminalBlock block)
+    {
+        if (block.GetProperty("UseConveyorSystem") is Sandbox.ModAPI.Interfaces.ITerminalProperty<bool> boolProp)
+            UseConveyorSystem = boolProp.GetValue(block);
+    }
+}
+
+
+[DataContract]
+public class FunctionalBlock
+{
+    [DataMember(Name = "enabled")]
+    public bool? Enabled { get; set; }
+
+    public FunctionalBlock() {}
+    public FunctionalBlock(Sandbox.ModAPI.IMyFunctionalBlock block)
+    {
+        Enabled = block.Enabled;
+    }
+}
+
+[DataContract]
+public class TerminalBlock
+{
+    [DataMember(Name = "show_in_inventory")]
+    public bool? ShowInInventory { get; set; }
+    [DataMember(Name = "show_in_terminal")]
+    public bool? ShowInTerminal { get; set; }
+    [DataMember(Name = "show_in_toolbar_config")]
+    public bool? ShowInToolbarConfig { get; set; }
+    [DataMember(Name = "show_on_hud")]
+    public bool? ShowOnHUD { get; set; }
+
+    public TerminalBlock() {}
+    public TerminalBlock(Sandbox.ModAPI.IMyTerminalBlock block)
+    {
+        ShowInInventory = block.ShowInInventory;
+        ShowInTerminal = block.ShowInTerminal;
+        ShowInToolbarConfig = block.ShowInToolbarConfig;
+        ShowOnHUD = block.ShowOnHUD;
+    }
+}
 
 [DataContract]
 public class GyroBlock
