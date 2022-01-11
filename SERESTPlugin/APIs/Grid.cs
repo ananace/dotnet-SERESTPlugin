@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces;
 using SpaceEngineers.Game.ModAPI;
 using System.Reflection;
 
@@ -145,7 +146,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("GET", "/info")]
     public string GetInfo()
     {
-        return Block.CustomInfo;
+        return Block.DetailedInfo;
     }
     [APIEndpoint("POST", "/info")]
     [APIEndpoint("PUT", "/info")]
@@ -172,6 +173,186 @@ public abstract class R0BlockAPI : BaseAPI
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
+    [APIEndpoint("GET", "/properties")]
+    public Dictionary<string, object> GetProperties()
+    {
+        Dictionary<string, object> properties = new Dictionary<string, object>();
+        List<ITerminalProperty> registered = new List<ITerminalProperty>();
+        Block.GetProperties(registered);
+
+        foreach (var property in registered)
+        {
+            if (Block.TryGetProperty(property, out bool boolValue))
+                properties[property.Id] = boolValue;
+            else if (Block.TryGetProperty(property, out short shortValue))
+                properties[property.Id] = shortValue;
+            else if (Block.TryGetProperty(property, out int intValue))
+                properties[property.Id] = intValue;
+            else if (Block.TryGetProperty(property, out long longValue))
+                properties[property.Id] = longValue;
+            else if (Block.TryGetProperty(property, out long floatValue))
+                properties[property.Id] = floatValue;
+            else if (Block.TryGetProperty(property, out long doubleValue))
+                properties[property.Id] = doubleValue;
+            else if (Block.TryGetProperty(property, out string stringValue))
+                properties[property.Id] = stringValue;
+            else if (Block.TryGetProperty(property, out System.Text.StringBuilder stringBuilderValue))
+                properties[property.Id] = stringBuilderValue.ToString();
+            else if (Block.TryGetProperty(property, out VRageMath.Color colorValue))
+                properties[property.Id] = new DataTypes.Color(colorValue);
+        }
+
+        return properties;
+    }
+    [APIEndpoint("POST", "/properties")]
+    [APIEndpoint("PUT", "/properties")]
+    [APIEndpoint("DELETE", "/properties")]
+    public void ModifyProperties()
+    {
+        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+    [APIEndpoint("GET", "/properties/(?<property_name>[^/]+)")]
+    public object GetProperty()
+    {
+        var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["property_name"]);
+        var prop = Block.GetProperty(name);
+        if (prop == null)
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No such property");
+
+        if (prop.TryGetValue(Block, out bool boolValue))
+            return boolValue;
+        else if (prop.TryGetValue(Block, out short shortValue))
+            return shortValue;
+        else if (prop.TryGetValue(Block, out int intValue))
+            return intValue;
+        else if (prop.TryGetValue(Block, out long longValue))
+            return longValue;
+        else if (prop.TryGetValue(Block, out long floatValue))
+            return floatValue;
+        else if (prop.TryGetValue(Block, out long doubleValue))
+            return doubleValue;
+        else if (prop.TryGetValue(Block, out string stringValue))
+            return stringValue;
+        else if (prop.TryGetValue(Block, out System.Text.StringBuilder stringBuilderValue))
+            return stringBuilderValue.ToString();
+        else if (prop.TryGetValue(Block, out VRageMath.Color colorValue))
+            return new DataTypes.Color(colorValue);
+        
+        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented, $"Unable to handle property of type {prop.TypeName}");
+    }
+    [APIEndpoint("POST", "/properties/(?<property_name>[^/]+)", NeedsBody = true)]
+    [APIEndpoint("PUT", "/properties/(?<property_name>[^/]+)", NeedsBody = true)]
+    public void ModifyProperty()
+    {
+        var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["property_name"]);
+        var prop = Block.GetProperty(name);
+        if (prop == null)
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No such property");
+
+        using (var reader = new System.IO.StreamReader(Request.InputStream))
+        {
+            var data = reader.ReadToEnd();
+
+            if (prop.Is<bool>())
+            {
+                if (bool.TryParse(data, out bool parsedValue))
+                {
+                    prop.As<bool>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as bool");
+            }
+            else if (prop.Is<short>())
+            {
+                if (short.TryParse(data, out short parsedValue))
+                {
+                    prop.As<short>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as short");
+            }
+            else if (prop.Is<int>())
+            {
+                if (int.TryParse(data, out int parsedValue))
+                {
+                    prop.As<int>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as int");
+            }
+            else if (prop.Is<long>())
+            {
+                if (long.TryParse(data, out long parsedValue))
+                {
+                    prop.As<long>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as long");
+            }
+            else if (prop.Is<float>())
+            {
+                if (float.TryParse(data, out float parsedValue))
+                {
+                    prop.As<float>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as float");
+            }
+            else if (prop.Is<double>())
+            {
+                if (double.TryParse(data, out double parsedValue))
+                {
+                    prop.As<double>().SetValue(Block, parsedValue);
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as double");
+            }
+            else if (prop.Is<string>())
+                prop.As<string>().SetValue(Block, data);
+            else if (prop.Is<System.Text.StringBuilder>())
+                prop.As<System.Text.StringBuilder>().SetValue(Block, new System.Text.StringBuilder(data));
+            else if (prop.Is<VRageMath.Color>())
+            {
+                if (data.TryReadJSON(out DataTypes.Color parsedValue))
+                {
+                    prop.As<VRageMath.Color>().SetValue(Block, parsedValue.ToColor());
+                    return;
+                }
+                throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as color");
+            }
+        }
+            
+        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented, $"Unable to handle property of type {prop.TypeName}");
+    }
+    [APIEndpoint("DELETE", "/properties")]
+    public void ResetProperty()
+    {
+        var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["property_name"]);
+        var prop = Block.GetProperty(name);
+        if (prop == null)
+            throw new HTTPException(System.Net.HttpStatusCode.NotFound, "No such property");
+
+        if (prop.Is<bool>())
+            prop.As<bool>().SetValue(Block, prop.As<bool>().GetDefaultValue(Block));
+        else if (prop.Is<short>())
+            prop.As<short>().SetValue(Block, prop.As<short>().GetDefaultValue(Block));
+        else if (prop.Is<int>())
+            prop.As<int>().SetValue(Block, prop.As<int>().GetDefaultValue(Block));
+        else if (prop.Is<long>())
+            prop.As<long>().SetValue(Block, prop.As<long>().GetDefaultValue(Block));
+        else if (prop.Is<float>())
+            prop.As<float>().SetValue(Block, prop.As<float>().GetDefaultValue(Block));
+        else if (prop.Is<double>())
+            prop.As<double>().SetValue(Block, prop.As<double>().GetDefaultValue(Block));
+        else if (prop.Is<string>())
+            prop.As<string>().SetValue(Block, prop.As<string>().GetDefaultValue(Block));
+        else if (prop.Is<System.Text.StringBuilder>())
+            prop.As<System.Text.StringBuilder>().SetValue(Block, prop.As<System.Text.StringBuilder>().GetDefaultValue(Block));
+        else if (prop.Is<VRageMath.Color>())
+            prop.As<VRageMath.Color>().SetValue(Block, prop.As<VRageMath.Color>().GetDefaultValue(Block));
+        else
+            throw new HTTPException(System.Net.HttpStatusCode.NotImplemented, $"Unable to handle property of type {prop.TypeName}");
+    }
 
     [APIEndpoint("GET", "/air_vent")]
     public DataTypes.AirVentBlock GetAirVent()
@@ -412,9 +593,9 @@ public abstract class R0BlockAPI : BaseAPI
             connectorBlock.PullStrength = settings.PullStrength.Value;
         if (settings.ThrowOut.HasValue)
             connectorBlock.ThrowOut = settings.ThrowOut.Value;
-        if (settings.Trading.HasValue)
+        if (settings.Trading.HasValue && fatBlock != null)
             fatBlock.TradingEnabled_RequestChange(settings.Trading.Value);
-        if (settings.PowerOverride.HasValue)
+        if (settings.PowerOverride.HasValue && fatBlock != null)
             fatBlock.IsPowerTransferOverrideEnabled = settings.PowerOverride.Value;
     }
     [APIEndpoint("DELETE", "/connector")]
@@ -453,6 +634,7 @@ public abstract class R0BlockAPI : BaseAPI
     {
         if (!(Block is IMyFunctionalBlock functionalBlock))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement functional");
+
         return functionalBlock.Enabled;
     }
     [APIEndpoint("POST", "/functional")]

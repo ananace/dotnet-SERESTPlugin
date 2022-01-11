@@ -25,14 +25,35 @@ static class HTTPExtensions
             return false;
         }
     }
-
-    public static T ReadJSON<T>(this System.Net.HttpListenerRequest req)
+    public static bool TryReadJSON<T>(this string data, out T result) where T : class
     {
-        var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+        result = default;
+
+        if (string.IsNullOrEmpty(data))
+            return false;
+
+        try
+        {
+            var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+            using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(data)))
+            {
+                result = (T)serializer.ReadObject(stream);
+                return true;
+            }
+        }
+        catch (SerializationException)
+        {
+            return false;
+        }
+    }
+
+    public static T ReadJSON<T>(this System.Net.HttpListenerRequest req) where T : class
+    {
+        var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u"), KnownTypes = new [] { typeof(APIs.DataTypes.Color), typeof(APIs.DataTypes.Coordinate), typeof(APIs.DataTypes.GPS) } });
         return (T)serializer.ReadObject(req.InputStream);
     }
 
-    public static bool TryReadJSON<T>(this System.Net.HttpListenerRequest req, out T result)
+    public static bool TryReadJSON<T>(this System.Net.HttpListenerRequest req, out T result) where T : class
     {
         result = default;
         if (!req.HasEntityBody)
@@ -77,7 +98,7 @@ static class HTTPExtensions
         }
     }
 
-    public static void CloseJSON<T>(this System.Net.HttpListenerResponse resp, T json)
+    public static void CloseJSON<T>(this System.Net.HttpListenerResponse resp, T json) where T : class
     {
         CloseJSON(resp, json, typeof(T));
     }
@@ -88,7 +109,7 @@ static class HTTPExtensions
         {
             resp.ContentType = "application/json";
 
-            var serializer = new DataContractJsonSerializer(jsonType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+            var serializer = new DataContractJsonSerializer(jsonType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u"), KnownTypes = new [] { typeof(APIs.DataTypes.Color), typeof(APIs.DataTypes.Coordinate), typeof(APIs.DataTypes.GPS) } });
             using (var stream = new MemoryStream())
             {
                 serializer.WriteObject(stream, json);

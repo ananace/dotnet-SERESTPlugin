@@ -213,17 +213,20 @@ public class CargoBlock
     public CargoBlock() {}
     public CargoBlock(Sandbox.Game.Entities.MyCubeBlock block)
     {
-        Enumerable.Range(0, block.InventoryCount).Select(i => {
-            var inv = block.GetInventoryBase(i);
-            return new InventoryInfo {
-                ID = inv.InventoryId.String,
-                CurrentVolume = (float)inv.CurrentVolume,
-                MaxVolume = (float)inv.MaxVolume,
-                CurrentMass = (float)inv.CurrentMass,
-                MaxMass = (float)inv.MaxMass,
-                Items = inv.GetItemsCount(),
-                MaxItems = inv.MaxItemCount,
-            };
+        IEnumerable<VRage.Game.Entity.MyInventoryBase> inventories = null;
+        if (block.InventoryCount > 1)
+            inventories = Enumerable.Range(0, block.InventoryCount).Select(i => block.GetInventoryBase(i));
+        else
+            inventories = new[] { block.GetInventoryBase() };
+
+        Inventories = inventories.Select(inv => new InventoryInfo {
+            ID = inv.InventoryId.String,
+            CurrentVolume = (float)inv.CurrentVolume,
+            MaxVolume = (float)inv.MaxVolume,
+            CurrentMass = (float)inv.CurrentMass,
+            MaxMass = (float)inv.MaxMass,
+            Items = inv.GetItemsCount(),
+            MaxItems = inv.MaxItemCount,
         }).ToArray();
     }
 }
@@ -288,6 +291,43 @@ public class ConnectorBlock : ConnectorBlockInput
         }
     }
 }
+
+[DataContract]
+public class ControllerBlockInput
+{
+    [DataMember(Name = "show_horizon_indicator")]
+    public bool? ShowHorizonIndicator { get; set; }
+    [DataMember(Name = "dampeners")]
+    public bool? DampenersOverride { get; set; }
+    [DataMember(Name = "handbrake")]
+    public bool? Handbrake { get; set; }
+    [DataMember(Name = "control_thrusters")]
+    public bool? ControlThrusters { get; set; }
+    [DataMember(Name = "control_wheels")]
+    public bool? ControlWheels { get; set; }
+    [DataMember(Name = "main")]
+    public bool? MainCockpit { get; set; }
+}
+
+[DataContract]
+public class ControllerBlock : ControllerBlockInput
+{
+    [DataMember(Name = "pilot")]
+    public PlayerInformation Pilot { get; set; }
+
+    public ControllerBlock() {}
+    public ControllerBlock(Sandbox.ModAPI.IMyShipController block)
+    {
+        Pilot = new PlayerInformation { Name = block.Pilot.Name, ID = (block.Pilot as Sandbox.Game.Entities.Character.MyCharacter).GetPlayerIdentityId() };
+        ShowHorizonIndicator = block.ShowHorizonIndicator;
+        DampenersOverride = block.DampenersOverride;
+        Handbrake = block.HandBrake;
+        ControlThrusters = block.ControlThrusters;
+        ControlWheels = block.ControlWheels;
+        MainCockpit = block.IsMainCockpit;
+    }
+}
+
 
 [DataContract]
 public class GyroBlock

@@ -216,7 +216,7 @@ public class APIServer : IDisposable
                     {
                         try
                         {
-                            var serializer = new DataContractJsonSerializer(endpoint.GetParameters().First().ParameterType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+                            var serializer = new DataContractJsonSerializer(endpoint.GetParameters().First().ParameterType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u"), KnownTypes = new [] { typeof(APIs.DataTypes.Color), typeof(APIs.DataTypes.Coordinate), typeof(APIs.DataTypes.GPS) } });
                             input = new object[] { serializer.ReadObject(ev.Context.Request.InputStream) };
                         }
                         catch (SerializationException ex)

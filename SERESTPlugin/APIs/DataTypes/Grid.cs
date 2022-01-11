@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 
 namespace SERESTPlugin.APIs.DataTypes
@@ -122,6 +123,18 @@ public class BlockInformation
 
     [DataMember(Name = "interfaces")]
     public List<string> Interfaces { get; set; } = new List<string>();
+    
+    //[DataContract]
+    //public class PropertyInfo
+    //{
+    //    [DataMember(Name = "id")]
+    //    public string ID { get; set; }
+    //    [DataMember(Name = "type")]
+    //    public string Type { get; set; }
+    //}
+
+    //[DataMember(Name = "properties")]
+    //public PropertyInfo[] Properties { get; set; }
 
     public BlockInformation() {}
     public BlockInformation(Sandbox.ModAPI.IMyTerminalBlock block)
@@ -133,13 +146,18 @@ public class BlockInformation
         Functional = block.IsFunctional;
         Working = block.IsWorking;
 
+        //List<Sandbox.ModAPI.Interfaces.ITerminalProperty> properties = new List<Sandbox.ModAPI.Interfaces.ITerminalProperty>();
+        //block.GetProperties(properties);
+        //Properties = properties.Select(p => new PropertyInfo { ID = p.Id, Type = p.TypeName }).ToArray();
+
         // Implemented for all applicable blocks (since all accessable blocks are IMyTerminalBlock)
         Interfaces.Add("data");
         Interfaces.Add("info");
         Interfaces.Add("name");
+        Interfaces.Add("properties");
         Interfaces.Add("terminal");
 
-        if (block is Sandbox.Game.Entities.MyCubeBlock fatBlock)
+        if (block is Sandbox.Game.Entities.Cube.MyTerminalBlock fatBlock)
         {
             if (fatBlock.HasInventory)
                 Interfaces.Add("cargo");

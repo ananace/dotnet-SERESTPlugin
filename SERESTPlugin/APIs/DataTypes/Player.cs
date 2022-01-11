@@ -3,11 +3,21 @@ using System.Runtime.Serialization;
 namespace SERESTPlugin.APIs.DataTypes
 {
     [DataContract]
-    internal class PlayerStatus
+    public class PlayerInformation
+    {
+        [DataMember(Name = "name")]
+        public string Name { get; set; }
+        [DataMember(Name = "id")]
+        public long ID { get; set; }
+    }
+
+    [DataContract]
+    public class PlayerStatus : PlayerInformation
     {
         public PlayerStatus() { }
         public PlayerStatus(Sandbox.Game.Entities.Character.MyCharacter character)
         {
+            ID = character.GetPlayerIdentityId();
             Name = character.GetFriendlyName();
             Health = character.StatComp.HealthRatio;
 
@@ -24,8 +34,6 @@ namespace SERESTPlugin.APIs.DataTypes
             }
         }
 
-        [DataMember(Name = "name")]
-        public string Name { get; set; }
         [DataMember(Name = "health")]
         public float Health { get; set; }
         [DataMember(Name = "hydrogen", EmitDefaultValue = false)]
