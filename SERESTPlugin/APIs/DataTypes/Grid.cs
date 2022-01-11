@@ -40,6 +40,8 @@ public class GridInformation
 [DataContract]
 public class BlockInformation
 {
+    // TODO: Dynamically discover this list?
+    // TODO: Mods?
     static readonly IReadOnlyDictionary<string, System.Type> InterfaceMapping = new Dictionary<string, System.Type> {
         { "air_vent", typeof(Sandbox.Game.ModAPI.IMyAirVent) },
         { "assembler", typeof(Sandbox.ModAPI.IMyAssembler) },
