@@ -21,6 +21,8 @@ public class APIServer : IDisposable
 
     readonly Dictionary<Request, List<EventHandler<HTTPEventArgs>>> _Callbacks = new Dictionary<Request, List<EventHandler<HTTPEventArgs>>>();
     public IReadOnlyDictionary<Request, List<EventHandler<HTTPEventArgs>>> Callbacks { get { return _Callbacks; } }
+    readonly List<SSEWrapper> _SSEClients = new List<SSEWrapper>();
+    public IReadOnlyList<SSEWrapper> SSEClients { get { return _SSEClients; } }
 
     public string BasePath { get; set; } = "/api";
     public string Hostname { get; set; } = "localhost";
@@ -98,8 +100,19 @@ public class APIServer : IDisposable
 
     public void Stop()
     {
+        _SSEClients.ForEach(s => s.Context.Response.Close());
+        _SSEClients.Clear();
+
         _listen?.Stop();
         _listen = null;
+    }
+
+    public void Tick()
+    {
+        if (!IsListening)
+            return;
+
+        SSEClients.ForEach(s => s.Tick());
     }
 
     public APIRegister RegisterAPI(string path)
@@ -125,6 +138,16 @@ public class APIServer : IDisposable
         Callbacks[req].Add(action);
     }
 
+    public void AddSSE(SSEWrapper client)
+    {
+        _SSEClients.Add(client);
+
+        client.OnClosed += (_, __) => {
+            _SSEClients.Remove(client);
+        };
+    }
+
+
     void OnContextReceived(IAsyncResult result)
     {
         if (!IsListening)
@@ -149,7 +172,7 @@ public class APIServer : IDisposable
     void HandleBaseAPIRequest(Type api, APIAttribute apiAttrib, MethodInfo endpoint, APIEndpointAttribute endpointAttrib, HTTPEventArgs ev)
     {
         ev.Handled = true;
-        
+
         if ((endpointAttrib.NeedsBody || (endpoint.GetParameters().Any() && !endpoint.GetParameters().First().IsOptional)) && !ev.Context.Request.HasEntityBody)
         {
             ev.Context.Response.CloseHttpCode(HttpStatusCode.BadRequest, "Body not provided");
@@ -232,7 +255,7 @@ public class APIServer : IDisposable
             }
             else
                 result = endpoint.Invoke(handler, null);
-            
+
             if (!endpointAttrib.ClosesResponse)
             {
                 if (result != null)

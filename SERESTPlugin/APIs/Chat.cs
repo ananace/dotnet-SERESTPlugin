@@ -21,14 +21,19 @@ public class ChatAPI : BaseAPI
         }
         else
         {
+            var color = VRageMath.Color.Yellow;
             var query = System.Web.HttpUtility.ParseQueryString(Request.Url.Query);
-            if (!string.IsNullOrEmpty(query["author"]))
-                Sandbox.Game.Gui.MyHud.Chat.ShowMessageScripted(query["author"], message);
-            else
+            if (!string.IsNullOrEmpty(query["color"]))
             {
-                Sandbox.Game.Gui.MyHud.Chat.ShowMessageColoredSP(message, Sandbox.Game.Gui.ChatChannel.Global);
-                sys.ChatHistory.EnqueueMessage(message, sys.CurrentChannel, Sandbox.Game.World.MySession.Static.LocalPlayerId);
+                var parsed = typeof(VRageMath.Color).GetProperties(System.Reflection.BindingFlags.Static).FirstOrDefault(c => c.Name.Equals(query["color"], System.StringComparison.OrdinalIgnoreCase));
+                if (parsed != null)
+                    color = (VRageMath.Color)parsed.GetValue(null);
             }
+
+            if (!string.IsNullOrEmpty(query["author"]))
+                Sandbox.Game.MyVisualScriptLogicProvider.SendChatMessageColored(message, color, query["author"], Sandbox.Game.World.MySession.Static.LocalPlayerId);
+            else
+                Sandbox.Game.MyVisualScriptLogicProvider.SendChatMessageColored(message, color, Sandbox.Game.World.MySession.Static.LocalHumanPlayer.DisplayName, Sandbox.Game.World.MySession.Static.LocalPlayerId);
         }
     }
 
@@ -74,29 +79,24 @@ public class ChatAPI : BaseAPI
         return new DataTypes.ChatHistory{ Messages = list.Select(m => new DataTypes.ChatMessage(m)).ToArray() };
     }
 
-    [APIEndpoint("GET", "/sse")]
+    [APIEndpoint("GET", "/sse", ClosesResponse = true)]
     public void GetEvents()
     {
         if (!Request.AcceptTypes.Any(type => type == "text/event-stream"))
             throw new HTTPException(System.Net.HttpStatusCode.NotAcceptable, "Need to accept text/event-stream");
 
-        throw new HTTPException(System.Net.HttpStatusCode.NotImplemented);
-
-        /*
-        ev.Context.Response.KeepAlive = true;
-        var sse = new SSEWrapper(ev.Context);
-
-        var sys = Sandbox.Game.World.MySession.Static.ChatSystem;
-
-        sys.FactionMessageReceived += (message) => {
-            
+        var sse = new SSEWrapper(Context);
+        Sandbox.ModAPI.MyAPIGateway.Utilities.MessageEntered += (string msg, ref bool _) => {
+            sse.SendJSON("message.entered", new DataTypes.ChatMessage{ Sender = Sandbox.Game.World.MySession.Static.LocalPlayerId, Author = Sandbox.Game.World.MySession.Static.LocalHumanPlayer.DisplayName, Message = msg });
         };
-        sys.PlayerMessageReceived += (message) => {
-            
+        Sandbox.ModAPI.MyAPIGateway.Utilities.MessageRecieved += (ulong sender, string msg) => {
+            var senderId = Sandbox.ModAPI.MyAPIGateway.Players.TryGetIdentityId(sender);
+            List<VRage.Game.ModAPI.IMyPlayer> players = new List<VRage.Game.ModAPI.IMyPlayer>();
+            Sandbox.ModAPI.MyAPIGateway.Players.GetPlayers(players);
+            sse.SendJSON("message.received", new DataTypes.ChatMessage{ Sender = senderId, Author = players.FirstOrDefault(p => p.SteamUserId == sender)?.DisplayName, Message = msg });
         };
 
-        server.AddSSE(sse);
-        */
+        APIServer.AddSSE(sse);
     }
 }
 

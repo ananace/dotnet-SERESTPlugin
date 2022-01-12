@@ -17,6 +17,9 @@ public class SSEWrapper
     public SSEWrapper(System.Net.HttpListenerContext ctx)
     {
         Context = ctx;
+
+        Context.Response.ContentType = "text/event-stream";
+        Context.Response.KeepAlive = true;
     }
 
     public void Tick()
