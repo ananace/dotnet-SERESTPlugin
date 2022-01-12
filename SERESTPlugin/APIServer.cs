@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace SERESTPlugin
 {
@@ -16,6 +17,7 @@ namespace SERESTPlugin
 public class APIServer : IDisposable
 {
     HttpListener _listen;
+    Thread _workerThread = null;
 
     public static IList<IAPI> ManualAPIs { get; private set; } = new List<IAPI> { };
 
@@ -28,6 +30,9 @@ public class APIServer : IDisposable
     public string Hostname { get; set; } = "localhost";
     public ushort Port { get; set; } = 9000;
 
+    /// Times per second
+    public float BackgroundThreadRate { get; set; } = 1;
+
     public bool IsListening { get { return _listen?.IsListening ?? false; } }
 
     public string ListenPrefix { get { return $"http://{Hostname}:{Port}/"; } }
@@ -35,6 +40,9 @@ public class APIServer : IDisposable
     public void Dispose()
     {
         Stop();
+
+        ManualAPIs.Clear();
+        _Callbacks.Clear();
     }
 
     public void Start()
@@ -105,6 +113,9 @@ public class APIServer : IDisposable
 
         _listen?.Stop();
         _listen = null;
+
+        _workerThread?.Abort();
+        _workerThread = null;
     }
 
     public void Tick()
@@ -140,6 +151,7 @@ public class APIServer : IDisposable
 
     public void AddSSE(SSEWrapper client)
     {
+        EnsureWorker();
         _SSEClients.Add(client);
 
         client.OnClosed += (_, __) => {
@@ -147,6 +159,27 @@ public class APIServer : IDisposable
         };
     }
 
+
+    void EnsureWorker()
+    {
+        if (_workerThread != null && _workerThread.IsAlive)
+            return;
+
+        _workerThread = new Thread(BackgroundWorker);
+        _workerThread.Start();
+    }
+
+    void BackgroundWorker()
+    {
+        while (IsListening)
+        {
+            Sandbox.ModAPI.MyAPIGateway.Utilities.InvokeOnGameThread(() => {
+                Tick();
+            }, "SERESTPlugin.APIServer");
+
+            Thread.Sleep((int)(1000.0f / BackgroundThreadRate));
+        }
+    }
 
     void OnContextReceived(IAsyncResult result)
     {
