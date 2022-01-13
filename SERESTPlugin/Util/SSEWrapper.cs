@@ -19,6 +19,7 @@ public class SSEWrapper
         Context = ctx;
 
         Context.Response.ContentType = "text/event-stream";
+        Context.Response.ContentLength64 = long.MaxValue; // Work around HttpListener flushing issue
         Context.Response.KeepAlive = true;
     }
 

@@ -324,6 +324,8 @@ public class APIServer : IDisposable
         {
             Logger.Debug($"APIServer: Handling {context.Request.HttpMethod} {context.Request.Url}");
 
+            context.Response.ContentEncoding = System.Text.Encoding.UTF8;
+
             var uri = context.Request.Url.AbsolutePath;
             if (!uri.StartsWith(BasePath))
             {
