@@ -79,11 +79,14 @@ public class ChatAPI : BaseAPI
         return new DataTypes.ChatHistory{ Messages = list.Select(m => new DataTypes.ChatMessage(m)).ToArray() };
     }
 
-    [APIEndpoint("GET", "/sse", ClosesResponse = true)]
+    [APIEndpoint("GET", "/", ClosesResponse = true)]
     public void GetEvents()
     {
         if (!Request.AcceptTypes.Any(type => type == "text/event-stream"))
+        {
+            // TODO: Return a snapshot?
             throw new HTTPException(System.Net.HttpStatusCode.NotAcceptable, "Need to accept text/event-stream");
+        }
 
         var sse = new SSEWrapper(Context);
         Sandbox.ModAPI.MyAPIGateway.Utilities.MessageEntered += (string msg, ref bool _) => {
@@ -96,7 +99,7 @@ public class ChatAPI : BaseAPI
             sse.SendJSON("message.received", new DataTypes.ChatMessage{ Sender = senderId, Author = players.FirstOrDefault(p => p.SteamUserId == sender)?.DisplayName, Message = msg });
         };
 
-        APIServer.AddSSE(sse);
+        APIServer.AddSSEConnection(sse);
     }
 }
 

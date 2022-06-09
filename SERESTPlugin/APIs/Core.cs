@@ -30,6 +30,12 @@ public class CoreAPI : BaseAPI
             ManualAPIs = APIServer.ManualAPIs.Select(api => api.GetType().ToString())
         };
     }
+
+    [APIEndpoint("GET", "/")]
+    public Dictionary<string, APIDefinition> GetData()
+    {
+        return APIServer.AutomaticAPIs.Select(api => { api.Attribute.Path, api });
+    }
 }
 
 }

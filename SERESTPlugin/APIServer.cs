@@ -20,6 +20,11 @@ public class APIServer : IDisposable
     Thread _workerThread = null;
 
     public static IList<IAPI> ManualAPIs { get; private set; } = new List<IAPI> { };
+    public static IEnumerable<APIDefinition> AutomaticAPIs { get {
+        return Assembly.GetExecutingAssembly().GetTypes()
+            .Where(t => typeof(BaseAPI).IsAssignableFrom(t) && t.HasAttribute<APIAttribute>())
+            .Select(a => new APIDefinition { Type => a, Attribute => a.GetCustomAttribute<APIAttribute>() }),
+    } }
 
     readonly Dictionary<Request, List<EventHandler<HTTPEventArgs>>> _Callbacks = new Dictionary<Request, List<EventHandler<HTTPEventArgs>>>();
     public IReadOnlyDictionary<Request, List<EventHandler<HTTPEventArgs>>> Callbacks { get { return _Callbacks; } }
@@ -149,7 +154,7 @@ public class APIServer : IDisposable
         Callbacks[req].Add(action);
     }
 
-    public void AddSSE(SSEWrapper client)
+    public void AddSSEConnection(SSEWrapper client)
     {
         EnsureWorker();
         _SSEClients.Add(client);
@@ -250,30 +255,24 @@ public class APIServer : IDisposable
                 {
                     if (typeof(IConvertible).IsAssignableFrom(parameter.ParameterType))
                     {
-                        using (var reader = new StreamReader(ev.Context.Request.InputStream))
+                        try
                         {
-                            var data = reader.ReadToEnd();
-                            try
-                            {
-                                var converted = Convert.ChangeType(data, parameter.ParameterType);
-                                input = new object[] { converted };
-                            }
-                            catch (FormatException ex)
-                            {
-                                throw new HTTPException(HttpStatusCode.BadRequest, $"Failed to parse request body: {ex.Message}");
-                            }
-                            catch (InvalidCastException ex)
-                            {
-                                throw new HTTPException(HttpStatusCode.BadRequest, $"Failed to parse request body: {ex.Message}");
-                            }
+                            input = new object[] { ev.Context.Request.ReadObject(parameter.ParameterType) };
+                        }
+                        catch (FormatException ex)
+                        {
+                            throw new HTTPException(HttpStatusCode.BadRequest, $"Failed to parse request body: {ex.Message}");
+                        }
+                        catch (InvalidCastException ex)
+                        {
+                            throw new HTTPException(HttpStatusCode.BadRequest, $"Failed to parse request body: {ex.Message}");
                         }
                     }
                     else
                     {
                         try
                         {
-                            var serializer = new DataContractJsonSerializer(endpoint.GetParameters().First().ParameterType, new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u"), KnownTypes = new [] { typeof(APIs.DataTypes.Color), typeof(APIs.DataTypes.Coordinate), typeof(APIs.DataTypes.GPS) } });
-                            input = new object[] { serializer.ReadObject(ev.Context.Request.InputStream) };
+                            input = new object[] { ev.Context.Request.ReadJSON(parameter.ParameterType) };
                         }
                         catch (SerializationException ex)
                         {

@@ -34,7 +34,13 @@ static class HTTPExtensions
 
         try
         {
-            var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u") });
+            var serializer = new DataContractJsonSerializer(
+                typeof(T),
+                new DataContractJsonSerializerSettings {
+                    DateTimeFormat = new DateTimeFormat("u")
+                }
+            );
+
             using (var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(data)))
             {
                 result = (T)serializer.ReadObject(stream);
@@ -47,12 +53,43 @@ static class HTTPExtensions
         }
     }
 
-    public static T ReadJSON<T>(this System.Net.HttpListenerRequest req) where T : class
+    public static object ReadJSON(this System.Net.HttpListenerRequest req, Type t)
     {
-        var serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings{ DateTimeFormat = new DateTimeFormat("u"), KnownTypes = new [] { typeof(APIs.DataTypes.Color), typeof(APIs.DataTypes.Coordinate), typeof(APIs.DataTypes.GPS) } });
+        var serializer = new DataContractJsonSerializer(
+            t,
+            new DataContractJsonSerializerSettings {
+                DateTimeFormat = new DateTimeFormat("u"),
+                KnownTypes = new [] {
+                    typeof(APIs.DataTypes.Color),
+                    typeof(APIs.DataTypes.Coordinate),
+                    typeof(APIs.DataTypes.GPS)
+                }
+            }
+        );
+
         return (T)serializer.ReadObject(req.InputStream);
     }
+    public static T ReadJSON<T>(this System.Net.HttpListenerRequest req) where T : class
+    {
+        return (T)req.ReadJSON(typeof(T));
+    }
 
+    public static bool TryReadJSON(this System.Net.HttpListenerRequest req, Type t, out object result)
+    {
+        result = default;
+        if (!req.HasEntityBody)
+            return false;
+
+        try
+        {
+            result = ReadJSON(req, t);
+            return true;
+        }
+        catch (SerializationException)
+        {
+            return false;
+        }
+    }
     public static bool TryReadJSON<T>(this System.Net.HttpListenerRequest req, out T result) where T : class
     {
         result = default;
@@ -70,32 +107,66 @@ static class HTTPExtensions
         }
     }
 
-    public static T ReadObject<T>(this System.Net.HttpListenerRequest req) where T : IConvertible
+    public static object ReadObject(this System.Net.HttpListenerRequest req, Type t)
     {
-        if (TryReadObject(req, out T result))
-            return result;
-        return default;
+        if (!req.HasEntityBody)
+            throw new ArgumentException("No entity body");
+
+        using (var reader = new StreamReader(req.InputStream))
+        {
+            var data = reader.ReadToEnd();
+            return Convert.ChangeType(data, t);
+        }
     }
 
-    public static bool TryReadObject<T>(this System.Net.HttpListenerRequest req, out T result) where T : IConvertible
+    public static T ReadObject<T>(this System.Net.HttpListenerRequest req) where T : IConvertible
     {
-        result = default;
+        T result = default;
 
         if (!req.HasEntityBody)
-            return false;
+            throw new ArgumentException("No entity body");
 
+        using (var reader = new StreamReader(req.InputStream))
+        {
+            var data = reader.ReadToEnd();
+            return (T)Convert.ChangeType(data, typeof(T));
+        }
+    }
+
+    public static bool TryReadObject(this System.Net.HttpListenerRequest req, Type t, out T result)
+    {
         try
         {
-            using (var reader = new StreamReader(req.InputStream))
-            {
-                var data = reader.ReadToEnd();
-                return data.TryConvert(out result);
-            }
+            result = req.ReadObject(t);
+            return true;
         }
         catch (FormatException)
         {
             return false;
         }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+        return false;
+    }
+
+    public static bool TryReadObject<T>(this System.Net.HttpListenerRequest req, out T result) where T : IConvertible
+    {
+        try
+        {
+            result = req.ReadObject<T>();
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+        return false;
     }
 
     public static void CloseJSON<T>(this System.Net.HttpListenerResponse resp, T json) where T : class

@@ -55,9 +55,20 @@ public abstract class R0GridAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     [APIEndpoint("PUT", "/")]
     [APIEndpoint("DELETE", "/")]
+    [Hidden]
     public void TryModifyGrid()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+    }
+
+    [APIEndpoint("GET", "/events", ClosesResponse = true)]
+    public void GetEvents()
+    {
+        if (!Request.AcceptTypes.Any(type => type == "text/event-stream"))
+        {
+            // TODO: Return a snapshot?
+            throw new HTTPException(System.Net.HttpStatusCode.NotAcceptable, "Need to accept text/event-stream");
+        }
     }
 
     [APIEndpoint("GET", "/dampeners")]
@@ -72,6 +83,7 @@ public abstract class R0GridAPI : BaseAPI
         Grid.EntityThrustComponent.DampenersEnabled = wanted ?? true;
     }
     [APIEndpoint("DELETE", "/dampeners")]
+    [Hidden]
     public void UnsetDampeners()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -121,6 +133,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     [APIEndpoint("PUT", "/")]
     [APIEndpoint("DELETE", "/")]
+    [Hidden]
     public void TryModifyBlock()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -151,6 +164,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/info")]
     [APIEndpoint("PUT", "/info")]
     [APIEndpoint("DELETE", "/info")]
+    [Hidden]
     public void ModifyInfo()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -168,6 +182,7 @@ public abstract class R0BlockAPI : BaseAPI
         Block.CustomName = name;
     }
     [APIEndpoint("DELETE", "/name")]
+    [Hidden]
     public void UnsetName()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -207,6 +222,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/properties")]
     [APIEndpoint("PUT", "/properties")]
     [APIEndpoint("DELETE", "/properties")]
+    [Hidden]
     public void ModifyProperties()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -237,7 +253,7 @@ public abstract class R0BlockAPI : BaseAPI
             return stringBuilderValue.ToString();
         else if (prop.TryGetValue(Block, out VRageMath.Color colorValue))
             return new DataTypes.Color(colorValue);
-        
+
         throw new HTTPException(System.Net.HttpStatusCode.NotImplemented, $"Unable to handle property of type {prop.TypeName}");
     }
     [APIEndpoint("POST", "/properties/(?<property_name>[^/]+)", NeedsBody = true)]
@@ -321,7 +337,7 @@ public abstract class R0BlockAPI : BaseAPI
                 throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to parse as color");
             }
         }
-            
+
         throw new HTTPException(System.Net.HttpStatusCode.NotImplemented, $"Unable to handle property of type {prop.TypeName}");
     }
     [APIEndpoint("DELETE", "/properties")]
@@ -373,6 +389,7 @@ public abstract class R0BlockAPI : BaseAPI
             airVentBlock.Depressurize = settings.Depressurize.Value;
     }
     [APIEndpoint("DELETE", "/air_vent")]
+    [Hidden]
     public void UnsetAirVent()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -406,6 +423,7 @@ public abstract class R0BlockAPI : BaseAPI
             assemblerBlock.Repeating = settings.Repeating.Value;
     }
     [APIEndpoint("DELETE", "/assembler")]
+    [Hidden]
     public void UnsetAssembler()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -422,6 +440,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/attachable_top")]
     [APIEndpoint("PUT", "/attachable_top")]
     [APIEndpoint("DELETE", "/attachable_top")]
+    [Hidden]
     public void ModifyAttachableTop()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -451,6 +470,7 @@ public abstract class R0BlockAPI : BaseAPI
         }
     }
     [APIEndpoint("DELETE", "/battery")]
+    [Hidden]
     public void UnsetBattery()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -477,6 +497,7 @@ public abstract class R0BlockAPI : BaseAPI
             beaconBlock.Radius = settings.Radius.Value;
     }
     [APIEndpoint("DELETE", "/beacon")]
+    [Hidden]
     public void UnsetBeacon()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -496,11 +517,12 @@ public abstract class R0BlockAPI : BaseAPI
     {
         if (!(Block is IMyButtonPanel buttonBlock))
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement button");
-        
+
         if (settings.AnyoneCanUse.HasValue)
             buttonBlock.AnyoneCanUse = settings.AnyoneCanUse.Value;
     }
     [APIEndpoint("DELETE", "/button")]
+    [Hidden]
     public void UnsetButton()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -531,6 +553,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/camera")]
     [APIEndpoint("PUT", "/camera")]
     [APIEndpoint("DELETE", "/camera")]
+    [Hidden]
     public void ModifyCamera()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -548,6 +571,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/cargo")]
     [APIEndpoint("PUT", "/cargo")]
     [APIEndpoint("DELETE", "/cargo")]
+    [Hidden]
     public void ModifyCargo()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -564,6 +588,7 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("POST", "/cockpit")]
     [APIEndpoint("PUT", "/cockpit")]
     [APIEndpoint("DELETE", "/cockpit")]
+    [Hidden]
     public void ModifyCockpit()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -599,6 +624,7 @@ public abstract class R0BlockAPI : BaseAPI
             fatBlock.IsPowerTransferOverrideEnabled = settings.PowerOverride.Value;
     }
     [APIEndpoint("DELETE", "/connector")]
+    [Hidden]
     public void UnsetConnector()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -644,11 +670,12 @@ public abstract class R0BlockAPI : BaseAPI
         var prop = Block.GetProperty("UseConveyorSystem");
         if (prop == null)
             throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement conveyor");
-        
+
         if (settings.UseConveyorSystem.HasValue)
             prop.AsBool().SetValue(Block, settings.UseConveyorSystem.Value);
     }
     [APIEndpoint("DELETE", "/conveyor")]
+    [Hidden]
     public void UnsetConveyor()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -674,6 +701,7 @@ public abstract class R0BlockAPI : BaseAPI
             functionalBlock.Enabled = settings.Enabled.Value;
     }
     [APIEndpoint("DELETE", "/functional")]
+    [Hidden]
     public void UnsetFunctional()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -737,7 +765,13 @@ public abstract class R0BlockAPI : BaseAPI
     [APIEndpoint("DELETE", "/gyro")]
     public void UnsetGyro()
     {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        if (!(Block is IMyGyro gyroBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement gyro");
+
+        gyroBlock.GyroOverride = false;
+        gyroBlock.Pitch = 0;
+        gyroBlock.Roll = 0;
+        gyroBlock.Yaw = 0;
     }
 
     [APIEndpoint("GET", "/programmable")]
@@ -785,6 +819,7 @@ public abstract class R0BlockAPI : BaseAPI
     }
 
     [APIEndpoint("GET", "/terminal")]
+    [Hidden]
     public DataTypes.TerminalBlock GetTerminal()
     {
         return new DataTypes.TerminalBlock(Block);
@@ -803,6 +838,7 @@ public abstract class R0BlockAPI : BaseAPI
             Block.ShowOnHUD = settings.ShowOnHUD.Value;
     }
     [APIEndpoint("DELETE", "/terminal")]
+    [Hidden]
     public void UnsetTerminal()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -842,8 +878,11 @@ public abstract class R0BlockAPI : BaseAPI
 
         return new DataTypes.ThrustBlock(thrustBlock);
     }
-    [APIEndpoint("POST", "/thrust")]
-    [APIEndpoint("PUT", "/thrust")]
+    [APIEndpoint("POST", "/thrust", Obsolete = true)]
+    [APIEndpoint("PUT", "/thrust",
+      Description = "Change thrust override settings",
+      Example = "With Newtons;\n\tcurl -X PUT {PATH} -d '{ \"override\" 100 }'\n\nWith percentage;\n\tcurl -X PUT {PATH} -d '{ \"override_perc\": 0.25 }'"
+    )]
     public void SetThrust(DataTypes.ThrustBlockInput settings)
     {
         if (!(Block is IMyThrust thrustBlock))
@@ -854,10 +893,13 @@ public abstract class R0BlockAPI : BaseAPI
         if (settings.OverridePercentage.HasValue)
             thrustBlock.ThrustOverridePercentage = settings.OverridePercentage.Value;
     }
-    [APIEndpoint("DELETE", "/thrust")]
+    [APIEndpoint("DELETE", "/thrust", Description = "Remove any applied thrust override")]
     public void StopThrust()
     {
-        throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
+        if (!(Block is IMyThrust thrustBlock))
+            throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Block does not implement thrust");
+
+        thrustBlock.ThrustOverride = 0;
     }
 }
 
@@ -904,6 +946,7 @@ public abstract class R0MultiBlockAPI : BaseAPI
     [APIEndpoint("POST", "/")]
     [APIEndpoint("PUT", "/")]
     [APIEndpoint("DELETE", "/")]
+    [Hidden]
     public void TryModifyBlocks()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);

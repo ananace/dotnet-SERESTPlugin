@@ -12,6 +12,9 @@ class APIEndpointAttribute : Attribute
     public bool NeedsBody { get; set; }
     public string[] NeedsData { get; set; }
 
+    public bool Obsolete { get; set; } = false;
+    public string Description { get; set; }
+
     public APIEndpointAttribute(string Method, string Path) { this.Method = Method; this.Path = Path; }
 }
 
