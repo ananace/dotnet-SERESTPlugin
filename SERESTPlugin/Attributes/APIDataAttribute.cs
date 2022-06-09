@@ -8,6 +8,8 @@ public class APIDataAttribute : Attribute
 {
     public string Retrieves { get; set; }
 
+    public string Description { get; set; }
+
     public APIDataAttribute(string Retrieves) { this.Retrieves = Retrieves; }
 }
 

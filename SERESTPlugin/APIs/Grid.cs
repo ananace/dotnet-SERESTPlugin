@@ -34,16 +34,9 @@ public abstract class R0GridAPI : BaseAPI
             return true;
         }
 
-        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
-        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
-        {
-            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
-            if (antennas.Any(ant => distance <= ant.Radius))
-                return true;
-        }
-
-        if (distance < 1000)
+        if (grid.PlayerCanCommunicate(ply))
             return true;
+
         throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target grid");
     }
 
@@ -112,16 +105,9 @@ public abstract class R0BlockAPI : BaseAPI
         }
         var grid = block.CubeGrid as MyCubeGrid;
 
-        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
-        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
-        {
-            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
-            if (antennas.Any(ant => distance <= ant.Radius))
-                return true;
-        }
-
-        if (distance < 1000)
+        if (grid.PlayerCanCommunicate(ply))
             return true;
+
         throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target block");
     }
 
@@ -925,17 +911,10 @@ public abstract class R0MultiBlockAPI : BaseAPI
         }
         var grid = block.CubeGrid as MyCubeGrid;
 
-        var distance = (ply.Character.PositionComp.GetPosition() - grid.PositionComp.GetPosition()).Length();
-        if (grid.GridSystems.RadioSystem.Receivers.Any(r => r.CanBeUsedByPlayer(playerId)))
-        {
-            var antennas = grid.GetFatBlocks().OfType<IMyRadioAntenna>().Where(b => b.IsWorking);
-            if (antennas.Any(ant => distance <= ant.Radius))
-                return true;
-        }
-
-        if (distance < 1000)
+        if (grid.PlayerCanCommunicate(ply))
             return true;
-        throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target block");
+
+        throw new HTTPException(System.Net.HttpStatusCode.BadRequest, "Unable to communicate with the target blocks");
     }
 
     [APIEndpoint("GET", "/")]

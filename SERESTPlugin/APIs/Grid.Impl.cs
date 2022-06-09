@@ -18,6 +18,8 @@ public class GlobalGridAPI : BaseAPI
         return MyEntities.GetEntities().OfType<MyCubeGrid>().Select(g => new DataTypes.GridInformation(g));
     }
     [APIEndpoint("POST", "/")]
+    [APIEndpoint("PUT", "/")]
+    [APIEndpoint("DELETE", "/")]
     public void TrySubmitGrid()
     {
         throw new HTTPException(System.Net.HttpStatusCode.MethodNotAllowed);
@@ -27,7 +29,7 @@ public class GlobalGridAPI : BaseAPI
 [API("/r0/grid/local", Needs = new string[] { "grid" }, OnDedicated = false)]
 public class LocalGridAPI : R0GridAPI
 {
-    [APIData("grid")]
+    [APIData("grid", Description = "A local grid")]
     public override MyCubeGrid FindGrid()
     {
         var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -36,12 +38,14 @@ public class LocalGridAPI : R0GridAPI
         return grid;
     }
     [APIData("canCommunicate")]
+    [Hidden]
     public override bool CanCommunicate() { return true; }
 
     [API("/block/id/(?<block_id>[0-9]+)", Needs = new string[] { "grid", "block" }, OnDedicated = false)]
     public class BlockAPIByID : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -52,9 +56,10 @@ public class LocalGridAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate() { return true; }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block ID (numerical)")]
         public override IMyTerminalBlock FindBlock()
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
@@ -69,6 +74,7 @@ public class LocalGridAPI : R0GridAPI
     public class BlockAPIByName : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -79,9 +85,10 @@ public class LocalGridAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate() { return true; }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block name")]
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -95,6 +102,7 @@ public class LocalGridAPI : R0GridAPI
     public class MultiBlockAPIByName : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -105,9 +113,10 @@ public class LocalGridAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate() { return true; }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid name matching multiple blocks")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -121,6 +130,7 @@ public class LocalGridAPI : R0GridAPI
     public class MultiBlockAPIByGroup : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -131,9 +141,10 @@ public class LocalGridAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate() { return true; }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid block group name")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
@@ -147,6 +158,7 @@ public class LocalGridAPI : R0GridAPI
     public class MultiBlockAPIAll : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var grid = (Sandbox.Game.World.MySession.Static.LocalHumanPlayer.Controller.ControlledEntity as MyCockpit)?.CubeGrid;
@@ -157,9 +169,11 @@ public class LocalGridAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate() { return true; }
 
         [APIData("blocks")]
+        [Hidden]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
@@ -172,7 +186,7 @@ public class LocalGridAPI : R0GridAPI
 [API("/r0/grid/id/(?<grid_id>[0-9]+)", Needs = new string[] { "grid", "canCommunicate" })]
 public class GridByIDAPI : R0GridAPI
 {
-    [APIData("grid")]
+    [APIData("grid", Description = "A valid grid ID (numerical)")]
     public override MyCubeGrid FindGrid()
     {
         if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -186,7 +200,7 @@ public class GridByIDAPI : R0GridAPI
         return grid;
     }
 
-    [APIData("canCommunicate")]
+    [APIData("canCommunicate", Description = "A method of communication with the target grid")]
     public override bool CanCommunicate()
     {
         return base.CanCommunicate();
@@ -196,6 +210,7 @@ public class GridByIDAPI : R0GridAPI
     public class BlockAPIByID : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -211,12 +226,13 @@ public class GridByIDAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block ID (numerical)")]
         public override IMyTerminalBlock FindBlock()
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
@@ -231,6 +247,7 @@ public class GridByIDAPI : R0GridAPI
     public class BlockAPIByName : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -246,12 +263,13 @@ public class GridByIDAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block name")]
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -265,6 +283,7 @@ public class GridByIDAPI : R0GridAPI
     public class MultiBlockAPIByName : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -280,12 +299,13 @@ public class GridByIDAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid name matching multiple blocks")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -299,6 +319,7 @@ public class GridByIDAPI : R0GridAPI
     public class MultiBlockAPIByGroup : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -314,12 +335,13 @@ public class GridByIDAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid block group name")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
@@ -333,6 +355,7 @@ public class GridByIDAPI : R0GridAPI
     public class MultiBlockAPIAll : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             if (!long.TryParse(EventArgs.Components["grid_id"], out long gridId))
@@ -348,12 +371,14 @@ public class GridByIDAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
         [APIData("blocks")]
+        [Hidden]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
@@ -366,7 +391,7 @@ public class GridByIDAPI : R0GridAPI
 [API("/r0/grid/name/(?<grid_name>[^/]+)", Needs = new string[] { "grid", "canCommunicate" })]
 public class GridByNameAPI : R0GridAPI
 {
-    [APIData("grid")]
+    [APIData("grid", Description = "A valid grid by name")]
     public override MyCubeGrid FindGrid()
     {
         var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -377,7 +402,7 @@ public class GridByNameAPI : R0GridAPI
         return grid;
     }
 
-    [APIData("canCommunicate")]
+    [APIData("canCommunicate", Description = "A valid method of communicating with the grid")]
     public override bool CanCommunicate()
     {
         return base.CanCommunicate();
@@ -387,6 +412,7 @@ public class GridByNameAPI : R0GridAPI
     public class BlockAPIByID : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -399,12 +425,13 @@ public class GridByNameAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block ID (numerical)")]
         public override IMyTerminalBlock FindBlock()
         {
             if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
@@ -419,6 +446,7 @@ public class GridByNameAPI : R0GridAPI
     public class BlockAPIByName : R0BlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -431,12 +459,13 @@ public class GridByNameAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("block")]
+        [APIData("block", Description = "A valid block name")]
         public override IMyTerminalBlock FindBlock()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -450,6 +479,7 @@ public class GridByNameAPI : R0GridAPI
     public class MultiBlockAPIByName : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -462,12 +492,13 @@ public class GridByNameAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid name for multiple blocks")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["block_name"]);
@@ -481,6 +512,7 @@ public class GridByNameAPI : R0GridAPI
     public class MultiBlockAPIByGroup : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -493,12 +525,13 @@ public class GridByNameAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
-        [APIData("blocks")]
+        [APIData("blocks", Description = "A valid block group name")]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["group_name"]);
@@ -512,6 +545,7 @@ public class GridByNameAPI : R0GridAPI
     public class MultiBlockAPIAll : R0MultiBlockAPI
     {
         [APIData("grid")]
+        [Hidden]
         public MyCubeGrid FindGrid()
         {
             var name = System.Web.HttpUtility.UrlDecode(EventArgs.Components["grid_name"]);
@@ -524,12 +558,14 @@ public class GridByNameAPI : R0GridAPI
         public MyCubeGrid Grid { get { return Data["grid"] as MyCubeGrid; } }
 
         [APIData("canCommunicate")]
+        [Hidden]
         public override bool CanCommunicate()
         {
             return base.CanCommunicate();
         }
 
         [APIData("blocks")]
+        [Hidden]
         public override IEnumerable<IMyTerminalBlock> FindBlocks()
         {
             List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
@@ -542,13 +578,13 @@ public class GridByNameAPI : R0GridAPI
 [API("/r0/block/id/(?<block_id>[0-9]+)", Needs = new string[] { "block", "canCommunicate" })]
 public class BlockAPIByID : R0BlockAPI
 {
-    [APIData("canCommunicate")]
+    [APIData("canCommunicate", Description = "A valid method to communicate with the block")]
     public override bool CanCommunicate()
     {
         return base.CanCommunicate();
     }
 
-    [APIData("block")]
+    [APIData("block", Description = "A valid block ID (numerical)")]
     public override IMyTerminalBlock FindBlock()
     {
         if (!long.TryParse(EventArgs.Components["block_id"], out long blockId))
