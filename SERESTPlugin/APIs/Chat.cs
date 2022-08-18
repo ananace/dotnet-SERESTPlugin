@@ -79,7 +79,7 @@ public class ChatAPI : BaseAPI
         return new DataTypes.ChatHistory{ Messages = list.Select(m => new DataTypes.ChatMessage(m)).ToArray() };
     }
 
-    [APIEndpoint("GET", "/", ClosesResponse = true)]
+    [APIEndpoint("GET", "/sse", ClosesResponse = true)]
     public void GetEvents()
     {
         if (!Request.AcceptTypes.Any(type => type == "text/event-stream"))
