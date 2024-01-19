@@ -67,7 +67,7 @@ static class HTTPExtensions
             }
         );
 
-        return (T)serializer.ReadObject(req.InputStream);
+        return serializer.ReadObject(req.InputStream);
     }
     public static T ReadJSON<T>(this System.Net.HttpListenerRequest req) where T : class
     {
@@ -121,8 +121,6 @@ static class HTTPExtensions
 
     public static T ReadObject<T>(this System.Net.HttpListenerRequest req) where T : IConvertible
     {
-        T result = default;
-
         if (!req.HasEntityBody)
             throw new ArgumentException("No entity body");
 
@@ -133,21 +131,17 @@ static class HTTPExtensions
         }
     }
 
-    public static bool TryReadObject(this System.Net.HttpListenerRequest req, Type t, out T result)
+    public static bool TryReadObject<T>(this System.Net.HttpListenerRequest req, Type t, out T result) where T : IConvertible
     {
         try
         {
-            result = req.ReadObject(t);
+            result = (T)req.ReadObject(t);
             return true;
         }
-        catch (FormatException)
-        {
-            return false;
-        }
-        catch (InvalidCastException)
-        {
-            return false;
-        }
+        catch (FormatException) { }
+        catch (InvalidCastException) { }
+
+        result = default(T);
         return false;
     }
 
@@ -158,14 +152,10 @@ static class HTTPExtensions
             result = req.ReadObject<T>();
             return true;
         }
-        catch (FormatException)
-        {
-            return false;
-        }
-        catch (InvalidCastException)
-        {
-            return false;
-        }
+        catch (FormatException) { }
+        catch (InvalidCastException) { }
+
+        result = default(T);
         return false;
     }
 

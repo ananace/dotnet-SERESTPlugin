@@ -34,7 +34,7 @@ public class CoreAPI : BaseAPI
     [APIEndpoint("GET", "/")]
     public Dictionary<string, APIDefinition> GetData()
     {
-        return APIServer.AutomaticAPIs.Select(api => { api.Attribute.Path, api });
+        return APIServer.AutomaticAPIs.ToDictionary(def => def.Attribute.Path);
     }
 }
 

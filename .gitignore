@@ -1,6 +1,4 @@
-/0Harmony.dll
-/Bin64
-/Bin64/
 .vscode/
 obj/
 bin/
+SERESTPlugin.csproj.user

@@ -4,7 +4,7 @@ namespace SERESTPlugin.Attributes
 {
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
-class APIEndpointAttribute : Attribute
+public class APIEndpointAttribute : Attribute
 {
     public string Path { get; set; }
     public string Method { get; private set; }
@@ -14,6 +14,7 @@ class APIEndpointAttribute : Attribute
 
     public bool Obsolete { get; set; } = false;
     public string Description { get; set; }
+    public string Example { get; set; }
 
     public APIEndpointAttribute(string Method, string Path) { this.Method = Method; this.Path = Path; }
 }

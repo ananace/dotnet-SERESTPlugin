@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using SERESTPlugin.Attributes;
+
 namespace SERESTPlugin
 {
 
@@ -33,7 +39,7 @@ public class APIDefinition
                                    .Where(s => !string.IsNullOrEmpty(s))));
     } }
     public IEnumerable<APIEndpointAttribute> Endpoints { get {
-        return Type.GetCustomAttributes<APIAttribute>();
+        return Type.GetCustomAttributes<APIAttribute>().Cast<APIEndpointAttribute>();
     } }
     public IEnumerable<APIDataAttribute> DataSources { get {
         return Type.GetCustomAttributes<APIDataAttribute>();

@@ -4,6 +4,6 @@ namespace SERESTPlugin.Attributes
 {
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited = true)]
-class HiddenAttribute : Attribute { }
+public class HiddenAttribute : Attribute { }
 
 }

@@ -4,7 +4,7 @@ namespace SERESTPlugin.Attributes
 {
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-class APIAttribute : Attribute
+public class APIAttribute : Attribute
 {
     public string Path { get; private set; }
     public bool OnLocal { get; set; } = true;

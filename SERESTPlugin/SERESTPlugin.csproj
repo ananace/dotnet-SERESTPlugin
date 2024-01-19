@@ -2,50 +2,45 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
 
-    <Version>0.1.0</Version>
-    <Authors>Alexander "Ananace" Olofsson</Authors>
-    <Company>Introvert Software</Company>
-    <Product>SERESTPlugin</Product>
-    <PackageId>SERESTPlugin</PackageId>
-    <NeutralLanguage>en</NeutralLanguage>
-    <Description>REST API Plugin for Space Engineers</Description>
-    <Copyright>Copyright © Alexander "Ananace" Olofsson 2022</Copyright>
-    <RepositoryUrl>https://github.com/ananace/dotnet-SERESTPlugin</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
+  <PropertyGroup>
+    <!-- Override in SERESTPlugin.csproj.user file -->
+    <SpaceEngineersBin64>/path/to/SteamLibrary/steamapps/common/SpaceEngineers/Bin64</SpaceEngineersBin64>
   </PropertyGroup>
 
   <ItemGroup>
-    <!--<Reference Include="HarmonyLib">
-      <HintPath>..\0Harmony.dll</HintPath>
-    </Reference>-->
+    <Reference Include="HarmonyLib">
+      <HintPath>$(SpaceEngineersBin64)/0Harmony.dll</HintPath>
+    </Reference>
 
     <Reference Include="Sandbox.Common">    
-      <HintPath>..\Bin64\Sandbox.Common.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/Sandbox.Common.dll</HintPath>    
     </Reference>    
     <Reference Include="Sandbox.Game">    
-      <HintPath>..\Bin64\Sandbox.Game.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/Sandbox.Game.dll</HintPath>    
     </Reference>    
     <Reference Include="Sandbox.Graphics">    
-      <HintPath>..\Bin64\Sandbox.Graphics.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/Sandbox.Graphics.dll</HintPath>    
     </Reference>    
     <Reference Include="SpaceEngineers.Game">
-      <HintPath>..\Bin64\SpaceEngineers.Game.dll</HintPath>
+      <HintPath>$(SpaceEngineersBin64)/SpaceEngineers.Game.dll</HintPath>
     </Reference>
     <Reference Include="SpaceEngineers.ObjectBuilders">    
-      <HintPath>..\Bin64\SpaceEngineers.ObjectBuilders.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/SpaceEngineers.ObjectBuilders.dll</HintPath>    
     </Reference>
     <Reference Include="VRage">    
-      <HintPath>..\Bin64\VRage.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/VRage.dll</HintPath>    
     </Reference>    
     <Reference Include="VRage.Game">    
-      <HintPath>..\Bin64\VRage.Game.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/VRage.Game.dll</HintPath>    
     </Reference>    
     <Reference Include="VRage.Library">    
-      <HintPath>..\Bin64\VRage.Library.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/VRage.Library.dll</HintPath>    
     </Reference>    
     <Reference Include="VRage.Math">    
-      <HintPath>..\Bin64\VRage.Math.dll</HintPath>    
+      <HintPath>$(SpaceEngineersBin64)/VRage.Math.dll</HintPath>    
     </Reference>    
   </ItemGroup>    
 

@@ -8,6 +8,7 @@ using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces;
 using SpaceEngineers.Game.ModAPI;
 using System.Reflection;
+using Sandbox.Game.World;
 
 namespace SERESTPlugin.APIs
 {
@@ -20,20 +21,13 @@ public abstract class R0GridAPI : BaseAPI
     public virtual bool CanCommunicate()
     {
         if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
-            return PlayerCanCommunicate(Grid, Sandbox.Game.World.MySession.Static.LocalPlayerId);
+            return PlayerCanCommunicate(Grid, Sandbox.Game.World.MySession.Static.LocalHumanPlayer);
         return true;
     }
 
     // TODO: Optional disable
-    protected bool PlayerCanCommunicate(MyCubeGrid grid, long playerId)
+    protected bool PlayerCanCommunicate(MyCubeGrid grid, MyPlayer ply)
     {
-        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
-        if (ply == null)
-        {
-            Logger.Debug($"Player: null");
-            return true;
-        }
-
         if (grid.PlayerCanCommunicate(ply))
             return true;
 
@@ -91,18 +85,12 @@ public abstract class R0BlockAPI : BaseAPI
     public virtual bool CanCommunicate()
     {
         if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
-            return PlayerCanCommunicate(Block, Sandbox.Game.World.MySession.Static.LocalPlayerId);
+            return PlayerCanCommunicate(Block, Sandbox.Game.World.MySession.Static.LocalHumanPlayer);
         return true;
     }
 
-    protected bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+    protected bool PlayerCanCommunicate(IMyTerminalBlock block, MyPlayer ply)
     {
-        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
-        if (ply == null)
-        {
-            Logger.Debug($"Player: null");
-            return true;
-        }
         var grid = block.CubeGrid as MyCubeGrid;
 
         if (grid.PlayerCanCommunicate(ply))
@@ -605,7 +593,7 @@ public abstract class R0BlockAPI : BaseAPI
         if (settings.ThrowOut.HasValue)
             connectorBlock.ThrowOut = settings.ThrowOut.Value;
         if (settings.Trading.HasValue && fatBlock != null)
-            fatBlock.TradingEnabled_RequestChange(settings.Trading.Value);
+            fatBlock.TradingEnabled.Value = settings.Trading.Value;
         if (settings.PowerOverride.HasValue && fatBlock != null)
             fatBlock.IsPowerTransferOverrideEnabled = settings.PowerOverride.Value;
     }
@@ -897,18 +885,12 @@ public abstract class R0MultiBlockAPI : BaseAPI
     public virtual bool CanCommunicate()
     {
         if (Sandbox.Game.World.MySession.Static.LocalPlayerId != 0)
-            return PlayerCanCommunicate(Blocks.First(), Sandbox.Game.World.MySession.Static.LocalPlayerId);
+            return PlayerCanCommunicate(Blocks.First(), Sandbox.Game.World.MySession.Static.LocalHumanPlayer);
         return true;
     }
 
-    protected bool PlayerCanCommunicate(IMyTerminalBlock block, long playerId)
+    protected bool PlayerCanCommunicate(IMyTerminalBlock block, MyPlayer ply)
     {
-        var ply = Sandbox.Game.World.MySession.Static.Players.TryGetIdentity(playerId);
-        if (ply == null)
-        {
-            Logger.Debug($"Player: null");
-            return true;
-        }
         var grid = block.CubeGrid as MyCubeGrid;
 
         if (grid.PlayerCanCommunicate(ply))

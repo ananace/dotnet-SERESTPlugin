@@ -23,7 +23,7 @@ public class APIServer : IDisposable
     public static IEnumerable<APIDefinition> AutomaticAPIs { get {
         return Assembly.GetExecutingAssembly().GetTypes()
             .Where(t => typeof(BaseAPI).IsAssignableFrom(t) && t.HasAttribute<APIAttribute>())
-            .Select(a => new APIDefinition { Type => a, Attribute => a.GetCustomAttribute<APIAttribute>() }),
+            .Select(a => new APIDefinition() { Type = a, Attribute = a.GetCustomAttribute<APIAttribute>() });
     } }
 
     readonly Dictionary<Request, List<EventHandler<HTTPEventArgs>>> _Callbacks = new Dictionary<Request, List<EventHandler<HTTPEventArgs>>>();

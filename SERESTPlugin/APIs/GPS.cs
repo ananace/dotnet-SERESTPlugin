@@ -68,7 +68,7 @@ public class R0LocalGPSAPI : BaseAPI
         [APIEndpoint("DELETE", "/")]
         public void DeleteGPS()
         {
-            Sandbox.Game.World.MySession.Static.Gpss.SendDelete(Sandbox.Game.World.MySession.Static.LocalPlayerId, GPS.Hash);
+            Sandbox.Game.World.MySession.Static.Gpss.SendDeleteGpsRequest(Sandbox.Game.World.MySession.Static.LocalPlayerId, GPS.Hash);
         }
     }
 }
